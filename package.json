@@ -5,7 +5,9 @@
   "description": "ElysiaJS 単体 vs Next.js連携 のリクエストベンチマーク",
   "scripts": {
     "start:elysia": "pnpm --filter elysia-standalone start",
+    "start:elysia:bun": "pnpm --filter elysia-standalone start:bun",
     "dev:elysia": "pnpm --filter elysia-standalone dev",
+    "dev:elysia:bun": "pnpm --filter elysia-standalone dev:bun",
     "build:next": "pnpm --filter next-elysia build",
     "start:next": "pnpm --filter next-elysia start",
     "dev:next": "pnpm --filter next-elysia dev",

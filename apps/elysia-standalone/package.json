@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts"
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts",
+    "dev:bun": "bun --watch src/bun.ts",
+    "start:bun": "bun src/bun.ts"
   },
   "dependencies": {
     "@elysia-bench/payload": "workspace:*",
