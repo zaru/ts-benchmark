@@ -2,11 +2,13 @@
 set -euo pipefail
 
 # ElysiaJS リクエストベンチマーク
-#   - Elysia 単体 (Node)      : http://localhost:3001/
-#   - Elysia 単体 (Bun)       : http://localhost:3002/
-#   - Next.js + Elysia        : http://localhost:3000/api
-#   - TanStack Start + Elysia : http://localhost:3003/api
-#   - Astro + Elysia          : http://localhost:3004/api
+#   各フレームワークは「素のネイティブ実装 /native」と「Elysia 連携 /api」を
+#   同一サーバ・同一ランタイムで両方公開し、Elysia 連携のオーバーヘッドを比較する。
+#   - Elysia 単体 (Node)        : http://localhost:3001/
+#   - Elysia 単体 (Bun)         : http://localhost:3002/
+#   - Next.js native / +Elysia  : http://localhost:3000/native , /api
+#   - TanStack native / +Elysia : http://localhost:3003/native , /api
+#   - Astro native / +Elysia    : http://localhost:3004/native , /api
 #
 # 計測対象のサーバを事前に起動しておくこと（起動していないものは自動でスキップ）:
 #   pnpm start:elysia        # Node 版 (:3001)
@@ -28,8 +30,11 @@ WARMUP="${WARMUP:-5s}"
 TARGETS=(
   "Elysia standalone (Node)|http://localhost:3001/"
   "Elysia standalone (Bun)|http://localhost:3002/"
+  "Next.js native (Node)|http://localhost:3000/native"
   "Next.js + Elysia (Node)|http://localhost:3000/api"
+  "TanStack Start native (Node)|http://localhost:3003/native"
   "TanStack Start + Elysia (Node)|http://localhost:3003/api"
+  "Astro native (Node)|http://localhost:3004/native"
   "Astro + Elysia (Node)|http://localhost:3004/api"
 )
 
