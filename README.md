@@ -114,6 +114,36 @@ DURATION=60s CONN=100 pnpm bench
 
 成功率はいずれも 100%（全レスポンス 200）。RPS を Bun=1.00 とした相対比は **Bun 1.00 : Node 0.57 : TanStack 0.31 : Astro 0.16 : Next.js 0.075**。
 
+#### スループット（Requests/sec、高いほど良い）
+
+```mermaid
+xychart-beta
+    title "Requests/sec (higher is better)"
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack", "Astro", "Next.js"]
+    y-axis "Requests/sec" 0 --> 80000
+    bar [74394, 42730, 23441, 11626, 5577]
+```
+
+#### レイテンシ p50（ms、低いほど良い）
+
+```mermaid
+xychart-beta
+    title "Latency p50 (ms, lower is better)"
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack", "Astro", "Next.js"]
+    y-axis "ms" 0 --> 9
+    bar [0.61, 1.05, 1.96, 4.01, 8.52]
+```
+
+#### レイテンシ p99（ms、低いほど良い）
+
+```mermaid
+xychart-beta
+    title "Latency p99 (ms, lower is better)"
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack", "Astro", "Next.js"]
+    y-axis "ms" 0 --> 18
+    bar [1.37, 2.47, 4.14, 9.17, 17.03]
+```
+
 ### 考察
 
 - **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準にスループットを見ると、
