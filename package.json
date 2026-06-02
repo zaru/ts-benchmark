@@ -11,6 +11,9 @@
     "build:next": "pnpm --filter next-elysia build",
     "start:next": "pnpm --filter next-elysia start",
     "dev:next": "pnpm --filter next-elysia dev",
+    "build:tanstack": "pnpm --filter tanstack-elysia build",
+    "start:tanstack": "pnpm --filter tanstack-elysia start",
+    "dev:tanstack": "pnpm --filter tanstack-elysia dev",
     "bench": "bash bench/run.sh"
   },
   "packageManager": "pnpm@10.24.0"

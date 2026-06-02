@@ -8,3 +8,9 @@ bench/results/
 # Next.js が自動生成
 next-env.d.ts
 *.tsbuildinfo
+
+# TanStack Start / Vite が自動生成
+routeTree.gen.ts
+.tanstack/
+.nitro/
+.output/
