@@ -1,0 +1,10 @@
+node_modules/
+.next/
+dist/
+*.log
+.DS_Store
+bench/results/
+
+# Next.js が自動生成
+next-env.d.ts
+*.tsbuildinfo

@@ -1,0 +1,15 @@
+{
+  "name": "elysia-bench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ElysiaJS 単体 vs Next.js連携 のリクエストベンチマーク",
+  "scripts": {
+    "start:elysia": "pnpm --filter elysia-standalone start",
+    "dev:elysia": "pnpm --filter elysia-standalone dev",
+    "build:next": "pnpm --filter next-elysia build",
+    "start:next": "pnpm --filter next-elysia start",
+    "dev:next": "pnpm --filter next-elysia dev",
+    "bench": "bash bench/run.sh"
+  },
+  "packageManager": "pnpm@10.24.0"
+}
