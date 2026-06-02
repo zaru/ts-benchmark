@@ -6,12 +6,14 @@ set -euo pipefail
 #   - Elysia 単体 (Bun)       : http://localhost:3002/
 #   - Next.js + Elysia        : http://localhost:3000/api
 #   - TanStack Start + Elysia : http://localhost:3003/api
+#   - Astro + Elysia          : http://localhost:3004/api
 #
 # 計測対象のサーバを事前に起動しておくこと（起動していないものは自動でスキップ）:
 #   pnpm start:elysia        # Node 版 (:3001)
 #   pnpm start:elysia:bun    # Bun 版  (:3002)
 #   pnpm build:next && pnpm start:next             # Next.js 版 (:3000)
 #   pnpm build:tanstack && pnpm start:tanstack     # TanStack Start 版 (:3003)
+#   pnpm build:astro && pnpm start:astro           # Astro 版 (:3004)
 #
 # パラメータは環境変数で上書き可能:
 #   DURATION  計測時間   (default 30s)
@@ -28,6 +30,7 @@ TARGETS=(
   "Elysia standalone (Bun)|http://localhost:3002/"
   "Next.js + Elysia (Node)|http://localhost:3000/api"
   "TanStack Start + Elysia (Node)|http://localhost:3003/api"
+  "Astro + Elysia (Node)|http://localhost:3004/api"
 )
 
 run_bench() {

@@ -1,0 +1,21 @@
+{
+  "name": "astro-elysia",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "start": "node ./dist/server/entry.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10.1.2",
+    "@elysia-bench/payload": "workspace:*",
+    "astro": "^6.4.2",
+    "elysia": "1.4.28"
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "^0.34.0",
+    "openapi-types": "^12.1.3"
+  }
+}
