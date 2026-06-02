@@ -140,9 +140,9 @@ DURATION=60s CONN=100 pnpm bench
 ```mermaid
 xychart-beta
     title "Requests/sec (higher is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack native", "TanStack+Elysia", "Astro native", "Astro+Elysia", "Next native", "Next+Elysia"]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack+Elysia", "Astro+Elysia", "Next+Elysia"]
     y-axis "Requests/sec" 0 --> 75000
-    bar [72663, 46274, 22562, 21824, 12226, 11612, 5681, 5272]
+    bar [72663, 46274, 21824, 11612, 5272]
 ```
 
 #### レイテンシ p50（ms、低いほど良い）
