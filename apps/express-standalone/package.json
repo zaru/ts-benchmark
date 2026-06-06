@@ -1,0 +1,18 @@
+{
+  "name": "express-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts"
+  },
+  "dependencies": {
+    "@elysia-bench/payload": "workspace:*",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.0"
+  }
+}

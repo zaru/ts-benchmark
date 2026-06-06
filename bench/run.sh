@@ -6,6 +6,8 @@ set -euo pipefail
 #   同一サーバ・同一ランタイムで両方公開し、Elysia 連携のオーバーヘッドを比較する。
 #   - Elysia 単体 (Node)        : http://localhost:3001/
 #   - Elysia 単体 (Bun)         : http://localhost:3002/
+#   - Hono 単体 (Node)          : http://localhost:3009/
+#   - Express 単体 (Node)       : http://localhost:3010/
 #   - Next.js native / +Elysia  : http://localhost:3000/native , /api
 #   - TanStack native / +Elysia : http://localhost:3003/native , /api
 #   - Astro native / +Elysia    : http://localhost:3004/native , /api
@@ -17,6 +19,8 @@ set -euo pipefail
 # 計測対象のサーバを事前に起動しておくこと（起動していないものは自動でスキップ）:
 #   pnpm start:elysia        # Node 版 (:3001)
 #   pnpm start:elysia:bun    # Bun 版  (:3002)
+#   pnpm start:hono          # Hono 単体 (:3009)
+#   pnpm start:express       # Express 単体 (:3010)
 #   pnpm build:next && pnpm start:next             # Next.js 版 (:3000)
 #   pnpm build:tanstack && pnpm start:tanstack     # TanStack Start 版 (:3003)
 #   pnpm build:astro && pnpm start:astro           # Astro 版 (:3004)
@@ -74,6 +78,8 @@ verify_body() {
 TARGETS=(
   "Elysia standalone (Node)|http://localhost:3001/"
   "Elysia standalone (Bun)|http://localhost:3002/"
+  "Hono standalone (Node)|http://localhost:3009/"
+  "Express standalone (Node)|http://localhost:3010/"
   "Next.js native (Node)|http://localhost:3000/native"
   "Next.js + Elysia (Node)|http://localhost:3000/api"
   "TanStack Start native (Node)|http://localhost:3003/native"
