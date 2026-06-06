@@ -1,6 +1,6 @@
 # elysia-bench
 
-A benchmark comparing ElysiaJS request performance across **"Elysia standalone (Node / Bun)"** and **"integration with major web frameworks (Next.js / TanStack Start / Astro / AdonisJS / SolidStart / SvelteKit / Nuxt)"**. For each framework we provide both a **plain native implementation (without Elysia)** and an **Elysia integration**, so we can measure the difference caused by mounting Elysia. We also line up **standalone Hono / Express servers** (Node / Bun) to compare raw server performance against Elysia standalone.
+A benchmark comparing ElysiaJS request performance across **"Elysia standalone (Node / Bun)"** and **"integration with major web frameworks (Next.js / TanStack Start / Astro / AdonisJS / SolidStart / SvelteKit / Nuxt)"**. For each framework we provide both a **plain native implementation (without Elysia)** and an **Elysia integration**, so we can measure the difference caused by mounting Elysia. We also line up **standalone Hono / Express / NestJS servers** to compare raw server performance against Elysia standalone (NestJS is Node-only, with both the Express and Fastify adapters).
 
 > 日本語版は [README.md](README.md) を参照してください。
 
@@ -22,6 +22,8 @@ All endpoints are aligned as `GET` APIs returning the same JSON object ([`packag
 | Hono standalone | `GET /` | Bun | 3011 | [`src/bun.ts`](apps/hono-standalone/src/bun.ts) |
 | Express standalone | `GET /` | Node | 3010 | [`src/node.ts`](apps/express-standalone/src/node.ts) |
 | Express standalone | `GET /` | Bun | 3012 | [`src/bun.ts`](apps/express-standalone/src/bun.ts) |
+| NestJS standalone (Express adapter) | `GET /` | Node | 3013 | [`src/node.ts`](apps/nestjs-standalone/src/node.ts) |
+| NestJS standalone (Fastify adapter) | `GET /` | Node | 3014 | [`src/fastify.ts`](apps/nestjs-standalone/src/fastify.ts) |
 | Next.js native | `GET /native` | Node | 3000 | [`native/route.ts`](apps/next-elysia/app/native/route.ts) |
 | Next.js + Elysia | `GET /api` | Node | 3000 | [`route.ts`](apps/next-elysia/app/api/[[...slugs]]/route.ts) |
 | TanStack Start native | `GET /native` | Node | 3003 | [`native.ts`](apps/tanstack-elysia/src/routes/native.ts) |
@@ -47,7 +49,7 @@ The complex logic and the SQLite database itself are shared in [`packages/worklo
 
 | Type | Simple (static JSON) | Complex (DB aggregation) |
 | --- | --- | --- |
-| standalone (Elysia / Hono / Express) | `GET /` | `GET /db` |
+| standalone (Elysia / Hono / Express / NestJS) | `GET /` | `GET /db` |
 | full-stack native (without Elysia) | `GET /native` | `GET /native-db` |
 | full-stack + Elysia | `GET /api` | `GET /api/db` |
 
@@ -69,6 +71,11 @@ apps/
     src/app.ts         Shared app definition (shared by Node/Bun)
     src/node.ts        Node entry (app.listen, port 3010)
     src/bun.ts         Bun entry (Bun's Node compat API, port 3012)
+  nestjs-standalone/   NestJS standalone (Node only, no Elysia)
+    src/app.controller.ts  Shared route definition (GET / and GET /db, no DI)
+    src/app.module.ts      AppModule (controllers only)
+    src/node.ts        Express adapter entry (@nestjs/platform-express, port 3013)
+    src/fastify.ts     Fastify adapter entry (@nestjs/platform-fastify, port 3014)
   next-elysia/         Next.js App Router (port 3000)
     app/native/route.ts          Plain Route Handler (no Elysia)
     app/api/[[...slugs]]/route.ts  Mounts Elysia
@@ -149,6 +156,8 @@ curl http://localhost:3009/         # Hono standalone (Node)
 curl http://localhost:3011/         # Hono standalone (Bun)
 curl http://localhost:3010/         # Express standalone (Node)
 curl http://localhost:3012/         # Express standalone (Bun)
+curl http://localhost:3013/         # NestJS standalone (Express adapter, Node)
+curl http://localhost:3014/         # NestJS standalone (Fastify adapter, Node)
 curl http://localhost:3000/native   # Next.js native      / curl .../api    # + Elysia
 curl http://localhost:3003/native   # TanStack native     / curl .../api    # + Elysia
 curl http://localhost:3004/native   # Astro native        / curl .../api    # + Elysia
@@ -351,6 +360,7 @@ xychart-beta
 - AdonisJS is Node `req/res`-based rather than Web Fetch native, so the Elysia integration synthesizes a Web `Request` inside the route handler, passes it to `elysia.handle()`, and writes the returned Web `Response` back to Adonis's `response` ([`start/routes.ts`](apps/adonis-elysia/start/routes.ts)). The api starter kit's default middleware (bodyparser / session / shield / auth initialization) passes through both `/native` and `/api` equally, so the comparison is fair. `build:adonis` copies `.env` into `build/` after the production build and starts in production mode.
 - SolidStart ([`api.ts`](apps/solidstart-elysia/src/routes/api.ts)) and SvelteKit ([`+server.ts`](apps/sveltekit-elysia/src/routes/api/+server.ts)) are Web Fetch native, so they just pass the received `request` to `elysia.handle()`. Nuxt ([`api.ts`](apps/nuxt-elysia/server/routes/api.ts)) converts to a Web `Request` via h3's `toWebRequest()` before passing it. In production, SolidStart runs the Nitro server emitted by Vinxi (`node .output/server/index.mjs`) and SvelteKit runs `@sveltejs/adapter-node` (`node build`).
 - Hono ([`src/app.ts`](apps/hono-standalone/src/app.ts)) and Express ([`src/app.ts`](apps/express-standalone/src/app.ts)) are **standalone servers without Elysia**; like Elysia standalone they have Node and Bun versions, unifying the app definition (routes) in `src/app.ts` and only swapping the runtime. The Node version runs directly via `tsx` (`start:hono` / `start:express`) and the Bun version via `bun` (`start:hono:bun` / `start:express:bun`), so no build is needed. Hono listens on the same `app.fetch` via `@hono/node-server` on Node and `Bun.serve` on Bun. Express(5) runs `app.listen` as-is via Bun's Node-compat API. All of them listen on `::` (dual stack) via `hostname` / `listen(port, '::')`.
+- NestJS ([`src/app.controller.ts`](apps/nestjs-standalone/src/app.controller.ts)) is also a **standalone server without Elysia**. It is **Node-only**, with two configurations — the **Express adapter** ([`src/node.ts`](apps/nestjs-standalone/src/node.ts), port 3013) and the **Fastify adapter** ([`src/fastify.ts`](apps/nestjs-standalone/src/fastify.ts), port 3014) — to measure the framework-layer overhead (vs Express standalone) and the adapter difference. The route definitions (Controller / Module) are shared adapter-agnostically, and only the bootstrap is swapped. Like the other standalone servers it runs via `tsx` and needs no build. Since `tsx` (esbuild) does not emit `emitDecoratorMetadata`, it **avoids constructor injection (DI)** and returns `payload` / `runWorkload()` directly inside the controller handlers (routing decorators register metadata explicitly, so they work under tsx). It listens on `::` (dual stack) via `app.listen(port, '::')`.
 - **Include IPv6 in the listen address**: oha resolves `localhost` to `::1` (IPv6) and does not fall back to IPv4. SolidStart / SvelteKit / Nuxt / Hono / Express start with `HOST=::` (or `hostname: "::"`) so they're reachable via `localhost`. Neglecting this makes single `curl` calls (which fall back to IPv4 via happy-eyeballs) succeed while all requests fail under load (0% success rate). `bench/run.sh` validates that the response body matches the shared payload before measuring, and confirms oha's success rate is 100% after measuring, so it only adopts **numbers from a properly working run**.
 - **The complex workload (`/db` family)** has every app call the shared [`runWorkload()`](packages/workload/index.ts) in [`packages/workload`](packages/workload/). The SQLite driver uses the native one per runtime (Node = `better-sqlite3` / Bun = `bun:sqlite`), switched via dynamic import. The DB connection is lazily initialized exactly once on the first request and opened read-only. The seed is fixed (independent of time/randomness), so the output is deterministic and byte-identical across all apps and runtimes. `bench/run.sh` validates this output against an expected value dynamically generated from `runWorkload()`. So that bundled full-stack apps can read the same DB, `run.sh` passes an absolute path via `WORKLOAD_DB_PATH`.
 - The load tool and the server run on the same machine, so absolute values are environment-dependent. Read them as **relative comparisons**.

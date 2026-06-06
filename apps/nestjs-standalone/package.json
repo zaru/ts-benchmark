@@ -1,0 +1,26 @@
+{
+  "name": "nestjs-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts",
+    "dev:fastify": "tsx watch src/fastify.ts",
+    "start:fastify": "tsx src/fastify.ts"
+  },
+  "dependencies": {
+    "@elysia-bench/payload": "workspace:*",
+    "@elysia-bench/workload": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0"
+  }
+}

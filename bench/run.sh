@@ -87,6 +87,8 @@ APPS=(
   "start:hono:bun|3011|Hono standalone (Bun)::/::payload;Hono standalone DB (Bun)::/db::db"
   "start:express|3010|Express standalone (Node)::/::payload;Express standalone DB (Node)::/db::db"
   "start:express:bun|3012|Express standalone (Bun)::/::payload;Express standalone DB (Bun)::/db::db"
+  "start:nestjs|3013|NestJS standalone Express (Node)::/::payload;NestJS standalone Express DB (Node)::/db::db"
+  "start:nestjs:fastify|3014|NestJS standalone Fastify (Node)::/::payload;NestJS standalone Fastify DB (Node)::/db::db"
   "start:next|3000|Next.js native (Node)::/native::payload;Next.js + Elysia (Node)::/api::payload;Next.js native DB (Node)::/native-db::db;Next.js + Elysia DB (Node)::/api/db::db"
   "start:tanstack|3003|TanStack Start native (Node)::/native::payload;TanStack Start + Elysia (Node)::/api::payload;TanStack Start native DB (Node)::/native-db::db;TanStack Start + Elysia DB (Node)::/api/db::db"
   "start:astro|3004|Astro native (Node)::/native::payload;Astro + Elysia (Node)::/api::payload;Astro native DB (Node)::/native-db::db;Astro + Elysia DB (Node)::/api/db::db"
