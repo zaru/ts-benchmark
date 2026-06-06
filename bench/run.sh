@@ -29,7 +29,12 @@ CONN="${CONN:-50}"
 WARMUP="${WARMUP:-5s}"
 READY_TIMEOUT="${READY_TIMEOUT:-60}"
 
-# 全エンドポイントが返すべき共通ペイロード（packages/payload/index.ts と一致させる）
+# 複雑ワークロード用 SQLite の絶対パス。各アプリ（特にバンドルされる full-stack）が
+# import.meta.url 由来の相対解決に依存せず同じ DB を読めるよう、ここで固定して渡す。
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export WORKLOAD_DB_PATH="${ROOT_DIR}/packages/workload/workload.sqlite"
+
+# 単純エンドポイント（/ ・/native ・/api）が返すべき共通ペイロード（packages/payload と一致）
 EXPECTED_RAW='{"message":"Hello Elysia","framework":"elysia","items":[{"id":1,"name":"alpha","active":true},{"id":2,"name":"beta","active":false},{"id":3,"name":"gamma","active":true}],"meta":{"count":3,"version":"1.0.0"}}'
 
 # JSON をキー順ソート・空白無視で正規化する（フレームワーク間の表記揺れを吸収）。
@@ -54,28 +59,41 @@ canon() {
 
 EXPECTED_CANON="$(printf '%s' "${EXPECTED_RAW}" | canon)"
 
-# レスポンスボディが期待ペイロードと一致すれば 0 を返す。
+# 複雑エンドポイント（/db 系）の期待値は共有パッケージの runWorkload() から動的生成する。
+# 全アプリが同一の決定的出力を返す前提なので、これと突き合わせれば「アプリ間で出力が割れて
+# いないか／DB 未シード／Node・Bun でドライバ出力差が出ていないか」を検知できる。
+EXPECTED_DB_CANON="$(npx tsx "${ROOT_DIR}/packages/workload/print-expected.ts" 2>/dev/null | canon)"
+if [ -z "${EXPECTED_DB_CANON}" ] || [ "${EXPECTED_DB_CANON}" = "__INVALID__" ]; then
+  echo "ERROR: 複雑ワークロードの期待値を生成できませんでした。"
+  echo "       'pnpm --filter @elysia-bench/workload seed' で workload.sqlite を生成したか確認してください。"
+  exit 1
+fi
+
+# レスポンスボディが指定した期待ペイロード（第2引数）と一致すれば 0 を返す。
 verify_body() {
-  local url="$1" body got
+  local url="$1" expected="$2" body got
   body="$(curl -sf "${url}" 2>/dev/null)" || return 1
   got="$(printf '%s' "${body}" | canon)"
-  [ "${got}" = "${EXPECTED_CANON}" ]
+  [ "${got}" = "${expected}" ]
 }
 
 # 計測対象の定義: "起動スクリプト|ポート|エンドポイント定義"
-#   エンドポイント定義 = "ラベル::パス" を ';' で連結（native と +Elysia を同一サーバで列挙）
+#   エンドポイント定義 = "ラベル::パス::期待値キー" を ';' で連結（同一サーバで列挙）
+#   期待値キー: payload=単純な共通 JSON / db=複雑ワークロードの集計結果
 APPS=(
-  "start:elysia|3001|Elysia standalone (Node)::/"
-  "start:elysia:bun|3002|Elysia standalone (Bun)::/"
-  "start:hono|3009|Hono standalone (Node)::/"
-  "start:express|3010|Express standalone (Node)::/"
-  "start:next|3000|Next.js native (Node)::/native;Next.js + Elysia (Node)::/api"
-  "start:tanstack|3003|TanStack Start native (Node)::/native;TanStack Start + Elysia (Node)::/api"
-  "start:astro|3004|Astro native (Node)::/native;Astro + Elysia (Node)::/api"
-  "start:adonis|3005|AdonisJS native (Node)::/native;AdonisJS + Elysia (Node)::/api"
-  "start:solid|3006|SolidStart native (Node)::/native;SolidStart + Elysia (Node)::/api"
-  "start:svelte|3007|SvelteKit native (Node)::/native;SvelteKit + Elysia (Node)::/api"
-  "start:nuxt|3008|Nuxt native (Node)::/native;Nuxt + Elysia (Node)::/api"
+  "start:elysia|3001|Elysia standalone (Node)::/::payload;Elysia standalone DB (Node)::/db::db"
+  "start:elysia:bun|3002|Elysia standalone (Bun)::/::payload;Elysia standalone DB (Bun)::/db::db"
+  "start:hono|3009|Hono standalone (Node)::/::payload;Hono standalone DB (Node)::/db::db"
+  "start:hono:bun|3011|Hono standalone (Bun)::/::payload;Hono standalone DB (Bun)::/db::db"
+  "start:express|3010|Express standalone (Node)::/::payload;Express standalone DB (Node)::/db::db"
+  "start:express:bun|3012|Express standalone (Bun)::/::payload;Express standalone DB (Bun)::/db::db"
+  "start:next|3000|Next.js native (Node)::/native::payload;Next.js + Elysia (Node)::/api::payload;Next.js native DB (Node)::/native-db::db;Next.js + Elysia DB (Node)::/api/db::db"
+  "start:tanstack|3003|TanStack Start native (Node)::/native::payload;TanStack Start + Elysia (Node)::/api::payload;TanStack Start native DB (Node)::/native-db::db;TanStack Start + Elysia DB (Node)::/api/db::db"
+  "start:astro|3004|Astro native (Node)::/native::payload;Astro + Elysia (Node)::/api::payload;Astro native DB (Node)::/native-db::db;Astro + Elysia DB (Node)::/api/db::db"
+  "start:adonis|3005|AdonisJS native (Node)::/native::payload;AdonisJS + Elysia (Node)::/api::payload;AdonisJS native DB (Node)::/native-db::db;AdonisJS + Elysia DB (Node)::/api/db::db"
+  "start:solid|3006|SolidStart native (Node)::/native::payload;SolidStart + Elysia (Node)::/api::payload;SolidStart native DB (Node)::/native-db::db;SolidStart + Elysia DB (Node)::/api/db::db"
+  "start:svelte|3007|SvelteKit native (Node)::/native::payload;SvelteKit + Elysia (Node)::/api::payload;SvelteKit native DB (Node)::/native-db::db;SvelteKit + Elysia DB (Node)::/api/db::db"
+  "start:nuxt|3008|Nuxt native (Node)::/native::payload;Nuxt + Elysia (Node)::/api::payload;Nuxt native DB (Node)::/native-db::db;Nuxt + Elysia DB (Node)::/api/db::db"
 )
 
 LAUNCHER_PID=""
@@ -148,7 +166,9 @@ mismatch=0
 for app in "${APPS[@]}"; do
   IFS='|' read -r script port endpoints <<<"${app}"
   IFS=';' read -ra eps <<<"${endpoints}"
-  first_path="${eps[0]##*::}"
+  # eps[0] = "ラベル::パス::キー"。疎通待ちには先頭エンドポイントのパスを使う。
+  first_rest="${eps[0]#*::}"
+  first_path="${first_rest%%::*}"
 
   echo "############################################################"
   echo "# ${script} を起動 (:${port})"
@@ -168,10 +188,17 @@ for app in "${APPS[@]}"; do
   fi
 
   for ep in "${eps[@]}"; do
+    # ep = "ラベル::パス::キー"
     elabel="${ep%%::*}"
-    epath="${ep##*::}"
+    erest="${ep#*::}"
+    epath="${erest%%::*}"
+    ekey="${erest##*::}"
     url="http://localhost:${port}${epath}"
-    if verify_body "${url}"; then
+    case "${ekey}" in
+      db) expected="${EXPECTED_DB_CANON}" ;;
+      *) expected="${EXPECTED_CANON}" ;;
+    esac
+    if verify_body "${url}" "${expected}"; then
       echo "  [OK] ${elabel} のレスポンスを検証 → 計測"
       run_bench "${elabel}" "${url}"
       measured=$((measured + 1))

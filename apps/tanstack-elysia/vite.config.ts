@@ -5,5 +5,7 @@ import { defineConfig } from "vite"
 export default defineConfig({
   // Next.js(:3000) / Elysia 単体(:3001,:3002) と同時に立てられるよう :3003 を使う
   server: { port: 3003 },
+  // better-sqlite3 はネイティブアドオンなので SSR バンドルから外し外部依存にする
+  ssr: { external: ["better-sqlite3"] },
   plugins: [tanstackStart(), viteReact()],
 })

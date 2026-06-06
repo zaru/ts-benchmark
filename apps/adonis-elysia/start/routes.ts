@@ -12,6 +12,7 @@ import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 import { Elysia } from 'elysia'
 import { payload } from '@elysia-bench/payload'
+import { runWorkload } from '@elysia-bench/workload'
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -42,6 +43,26 @@ router.get('/api', async ({ request, response }) => {
     headers: request.headers() as Record<string, string>,
   })
   const webResponse = await elysia.handle(webRequest)
+  response.status(webResponse.status)
+  webResponse.headers.forEach((value, key) => response.header(key, value))
+  return response.send(await webResponse.text())
+})
+
+/*
+| 複雑ワークロード版（SQLite を複数回クエリしてアプリ側で集計する）。
+|   GET /native-db … 素のネイティブ実装（Elysia なし）
+|   GET /api/db    … Elysia 連携
+*/
+router.get('/native-db', async ({ response }) => response.json(await runWorkload()))
+
+const elysiaDb = new Elysia({ prefix: '/api' }).get('/db', () => runWorkload())
+
+router.get('/api/db', async ({ request, response }) => {
+  const webRequest = new Request(request.completeUrl(true), {
+    method: request.method(),
+    headers: request.headers() as Record<string, string>,
+  })
+  const webResponse = await elysiaDb.handle(webRequest)
   response.status(webResponse.status)
   webResponse.headers.forEach((value, key) => response.header(key, value))
   return response.send(await webResponse.text())

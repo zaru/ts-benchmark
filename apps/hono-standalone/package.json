@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/node.ts",
-    "start": "tsx src/node.ts"
+    "start": "tsx src/node.ts",
+    "dev:bun": "bun --watch src/bun.ts",
+    "start:bun": "bun src/bun.ts"
   },
   "dependencies": {
     "@elysia-bench/payload": "workspace:*",
+    "@elysia-bench/workload": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "hono": "^4.9.0"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.0",
     "tsx": "^4.19.0"
   }
 }
