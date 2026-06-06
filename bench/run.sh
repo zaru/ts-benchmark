@@ -9,6 +9,7 @@ set -euo pipefail
 #   - Next.js native / +Elysia  : http://localhost:3000/native , /api
 #   - TanStack native / +Elysia : http://localhost:3003/native , /api
 #   - Astro native / +Elysia    : http://localhost:3004/native , /api
+#   - AdonisJS native / +Elysia : http://localhost:3005/native , /api
 #
 # 計測対象のサーバを事前に起動しておくこと（起動していないものは自動でスキップ）:
 #   pnpm start:elysia        # Node 版 (:3001)
@@ -16,6 +17,7 @@ set -euo pipefail
 #   pnpm build:next && pnpm start:next             # Next.js 版 (:3000)
 #   pnpm build:tanstack && pnpm start:tanstack     # TanStack Start 版 (:3003)
 #   pnpm build:astro && pnpm start:astro           # Astro 版 (:3004)
+#   pnpm build:adonis && pnpm start:adonis         # AdonisJS 版 (:3005)
 #
 # パラメータは環境変数で上書き可能:
 #   DURATION  計測時間   (default 30s)
@@ -36,6 +38,8 @@ TARGETS=(
   "TanStack Start + Elysia (Node)|http://localhost:3003/api"
   "Astro native (Node)|http://localhost:3004/native"
   "Astro + Elysia (Node)|http://localhost:3004/api"
+  "AdonisJS native (Node)|http://localhost:3005/native"
+  "AdonisJS + Elysia (Node)|http://localhost:3005/api"
 )
 
 run_bench() {

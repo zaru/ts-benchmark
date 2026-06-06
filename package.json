@@ -17,6 +17,9 @@
     "build:astro": "pnpm --filter astro-elysia build",
     "start:astro": "pnpm --filter astro-elysia start",
     "dev:astro": "pnpm --filter astro-elysia dev",
+    "build:adonis": "pnpm --filter adonis-elysia build",
+    "start:adonis": "pnpm --filter adonis-elysia start",
+    "dev:adonis": "pnpm --filter adonis-elysia dev",
     "bench": "bash bench/run.sh"
   },
   "packageManager": "pnpm@10.24.0"

@@ -22,6 +22,8 @@ ElysiaJS のリクエスト性能を **「Elysia 単体（Node / Bun）」** と
 | TanStack Start + Elysia | `GET /api` | Node | 3003 | [`api.$.ts`](apps/tanstack-elysia/src/routes/api.$.ts) |
 | Astro native | `GET /native` | Node | 3004 | [`native.ts`](apps/astro-elysia/src/pages/native.ts) |
 | Astro + Elysia | `GET /api` | Node | 3004 | [`[...slugs].ts`](apps/astro-elysia/src/pages/api/[...slugs].ts) |
+| AdonisJS native | `GET /native` | Node | 3005 | [`routes.ts`](apps/adonis-elysia/start/routes.ts) |
+| AdonisJS + Elysia | `GET /api` | Node | 3005 | [`routes.ts`](apps/adonis-elysia/start/routes.ts) |
 
 Node 版と Bun 版はランタイムだけが異なり、ルート定義は [`src/routes.ts`](apps/elysia-standalone/src/routes.ts) に一本化している。
 
@@ -44,6 +46,9 @@ apps/
     src/pages/native.ts           素の Astro Endpoint（Elysia なし）
     src/pages/api/[...slugs].ts   Elysia をマウント
     astro.config.mjs     output:server + @astrojs/node(standalone)
+  adonis-elysia/       AdonisJS（api スターターキット, port 3005）
+    start/routes.ts      /native（素）と /api（Elysia 連携）を定義
+                         Node の req/res を Web Request に変換して elysia.handle() へ渡す
 packages/
   payload/             全エンドポイントが返す共通 JSON ペイロード
 bench/
@@ -79,7 +84,11 @@ pnpm start:tanstack
 pnpm build:astro
 pnpm start:astro
 
-# 6) ベンチマーク実行
+# 6) AdonisJS を本番ビルドして起動（同上）
+pnpm build:adonis
+pnpm start:adonis
+
+# 7) ベンチマーク実行
 pnpm bench
 ```
 
@@ -91,6 +100,7 @@ curl http://localhost:3002/         # Elysia 単体 (Bun)
 curl http://localhost:3000/native   # Next.js native      / curl .../api    # + Elysia
 curl http://localhost:3003/native   # TanStack native     / curl .../api    # + Elysia
 curl http://localhost:3004/native   # Astro native        / curl .../api    # + Elysia
+curl http://localhost:3005/native   # AdonisJS native     / curl .../api    # + Elysia
 ```
 
 ### パラメータ
@@ -109,19 +119,21 @@ DURATION=60s CONN=100 pnpm bench
 
 ## 結果
 
-計測環境: macOS (Darwin 25.5.0, Apple Silicon) / Node 24.2.0 / Bun 1.3.14 / `CONN=50` / `DURATION=30s` / oha 1.14.0。
-8 つを**同時起動して同一 run で**計測したもの（負荷ツールも同一マシン）。絶対値は環境依存なので**相対比較**として読むこと。
+計測環境: macOS (Darwin 25.5.0, Apple Silicon) / Node 26.3.0 / Bun 1.3.14 / `CONN=50` / `DURATION=30s` / oha 1.14.0。
+10 個を**同時起動して同一 run で**計測したもの（負荷ツールも同一マシン）。絶対値は環境依存なので**相対比較**として読むこと。
 
 | 構成 | Requests/sec | 平均 ms | p50 ms | p99 ms |
 | --- | --- | --- | --- | --- |
-| Elysia 単体 (Bun) | **72,663** | 0.69 | 0.62 | 1.57 |
-| Elysia 単体 (Node) | 46,274 | 1.08 | 1.02 | 2.12 |
-| TanStack Start native | 22,562 | 2.21 | 2.01 | 4.72 |
-| TanStack Start + Elysia | 21,824 | 2.29 | 2.07 | 5.29 |
-| Astro native | 12,226 | 4.09 | 3.79 | 9.44 |
-| Astro + Elysia | 11,612 | 4.30 | 3.98 | 9.87 |
-| Next.js native | 5,681 | 8.80 | 7.71 | 26.30 |
-| Next.js + Elysia | 5,272 | 9.48 | 8.72 | 19.45 |
+| Elysia 単体 (Bun) | **76,874** | 0.65 | 0.61 | 1.25 |
+| Elysia 単体 (Node) | 48,511 | 1.03 | 0.97 | 2.00 |
+| TanStack Start native | 24,323 | 2.05 | 1.89 | 4.02 |
+| TanStack Start + Elysia | 23,780 | 2.10 | 1.93 | 4.10 |
+| Astro native | 12,018 | 4.16 | 3.92 | 8.68 |
+| AdonisJS native | 11,959 | 4.18 | 4.04 | 8.19 |
+| Astro + Elysia | 11,050 | 4.52 | 4.29 | 9.03 |
+| AdonisJS + Elysia | 10,154 | 4.92 | 4.85 | 9.54 |
+| Next.js native | 6,609 | 7.56 | 7.14 | 15.22 |
+| Next.js + Elysia | 5,637 | 8.87 | 8.33 | 18.31 |
 
 成功率はいずれも 100%（全レスポンス 200）。
 
@@ -129,20 +141,21 @@ DURATION=60s CONN=100 pnpm bench
 
 | フレームワーク | native RPS | +Elysia RPS | Elysia 維持率 |
 | --- | --- | --- | --- |
-| TanStack Start | 22,562 | 21,824 | **96.7%**（約 -3%） |
-| Astro | 12,226 | 11,612 | **95.0%**（約 -5%） |
-| Next.js | 5,681 | 5,272 | **92.8%**（約 -7%） |
+| TanStack Start | 24,323 | 23,780 | **97.8%**（約 -2%） |
+| Astro | 12,018 | 11,050 | **91.9%**（約 -8%） |
+| Next.js | 6,609 | 5,637 | **85.3%**（約 -15%） |
+| AdonisJS | 11,959 | 10,154 | **84.9%**（約 -15%） |
 
-→ **Elysia を載せても素の状態から 3〜7% 程度しか落ちない**。スループットの大きな差はフレームワーク側が支配的で、Elysia のオーバーヘッドは小さい。
+→ Elysia 連携のオーバーヘッドはフレームワークの連携方式に依る。`fetch` ハンドラをそのまま委譲できる TanStack は **-2%** とごく小さい。Astro（-8%）も比較的軽い。一方、Route Handler 層で `Request`/`Response` 変換を挟む Next.js（-15%）と、Node の `req/res` から Web `Request` を毎回合成して `elysia.handle()` へ橋渡しする AdonisJS（-15%）はやや大きい。いずれにせよスループットの大きな差はフレームワーク側が支配的（最小の Next.js でも維持率 85%）。
 
 #### スループット（Requests/sec、高いほど良い）
 
 ```mermaid
 xychart-beta
     title "Requests/sec (higher is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack+Elysia", "Astro+Elysia", "Next+Elysia"]
-    y-axis "Requests/sec" 0 --> 75000
-    bar [72663, 46274, 21824, 11612, 5272]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack+Elysia", "Astro+Elysia", "Adonis+Elysia", "Next+Elysia"]
+    y-axis "Requests/sec" 0 --> 80000
+    bar [76874, 48511, 23780, 11050, 10154, 5637]
 ```
 
 #### レイテンシ p50（ms、低いほど良い）
@@ -150,9 +163,9 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p50 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack native", "TanStack+Elysia", "Astro native", "Astro+Elysia", "Next native", "Next+Elysia"]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack native", "TanStack+Elysia", "Astro native", "Astro+Elysia", "Adonis native", "Adonis+Elysia", "Next native", "Next+Elysia"]
     y-axis "ms" 0 --> 9
-    bar [0.62, 1.02, 2.01, 2.07, 3.79, 3.98, 7.71, 8.72]
+    bar [0.61, 0.97, 1.89, 1.93, 3.92, 4.29, 4.04, 4.85, 7.14, 8.33]
 ```
 
 #### レイテンシ p99（ms、低いほど良い）
@@ -160,24 +173,25 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p99 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack native", "TanStack+Elysia", "Astro native", "Astro+Elysia", "Next native", "Next+Elysia"]
-    y-axis "ms" 0 --> 27
-    bar [1.57, 2.12, 4.72, 5.29, 9.44, 9.87, 26.30, 19.45]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "TanStack native", "TanStack+Elysia", "Astro native", "Astro+Elysia", "Adonis native", "Adonis+Elysia", "Next native", "Next+Elysia"]
+    y-axis "ms" 0 --> 20
+    bar [1.25, 2.00, 4.02, 4.10, 8.68, 9.03, 8.19, 9.54, 15.22, 18.31]
 ```
 
 ### 考察
 
-- **Elysia 連携のオーバーヘッドは小さい（今回の主目的）**: 各フレームワークで素のネイティブ実装に Elysia を載せても、スループットは **3〜7% 落ちる程度**（TanStack -3% / Astro -5% / Next.js -7%）。p50 レイテンシの増分も 0.1〜1.0ms 程度。つまり「Elysia を使うかどうか」より「どのフレームワークに載せるか」が性能を支配する。
-- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準にスループットを見ると、TanStack ≒ 0.47 倍、Astro ≒ 0.25 倍、Next.js ≒ 0.11 倍。同じ Node 上でも **TanStack > Astro > Next.js** とリクエストパイプラインの重さで明確に差が出る。Astro はちょうど中間。Next.js の Route Handler 層（`Request`/`Response` 変換・各種ミドルウェア・キャッシュ判定など）が相対的に最も重い。
+- **Elysia 連携のオーバーヘッドは連携方式次第（今回の主目的）**: 素のネイティブ実装に Elysia を載せたときのスループット低下は、`fetch` ハンドラをそのまま委譲できる **TanStack -2%** はごく小さく、**Astro -8%** も比較的軽い。一方、Route Handler 層で `Request`/`Response` 変換を挟む **Next.js -15%**、Node の `req/res` から Web `Request` を毎回合成して橋渡しする **AdonisJS -15%** はやや大きい。それでも「Elysia を使うかどうか」より「どのフレームワークに載せるか」がスループットを支配する点は変わらない（最小の Next.js でも維持率 85%）。
+- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準に +Elysia のスループットを見ると、TanStack ≒ 0.49 倍、Astro ≒ 0.23 倍、AdonisJS ≒ 0.21 倍、Next.js ≒ 0.12 倍。同じ Node 上でも **TanStack > Astro ≒ AdonisJS > Next.js** とリクエストパイプラインの重さで差が出る。素のネイティブ実装どうしでは Astro（12,018）と AdonisJS（11,959。api スターターキットの bodyparser / session / shield / 認証初期化などを全リクエストで通過）がほぼ同水準。Next.js の Route Handler 層が相対的に最も重い。
 - **ランタイム差（Node vs Bun）**: 同じ Elysia 単体でも Bun は Node の **約 1.6 倍のスループット**。Elysia 本来の推奨環境である Bun が最速。
-- **総合**: 最速の Elysia 単体(Bun) を 100% とすると Node 単体 ≒ 64%、TanStack 連携 ≒ 30%、Astro 連携 ≒ 16%、Next.js 連携 ≒ 7.3%。フルスタック連携しつつ API 性能も重視するなら **TanStack Start が最有利**。純粋な API スループットが最優先なら Elysia を独立プロセス（できれば Bun）で立てる構成が最良。
+- **総合**: 最速の Elysia 単体(Bun) を 100% とすると Node 単体 ≒ 63%、TanStack 連携 ≒ 31%、Astro 連携 ≒ 14%、AdonisJS 連携 ≒ 13%、Next.js 連携 ≒ 7%。フルスタック連携しつつ API 性能も重視するなら **TanStack Start が最有利**。純粋な API スループットが最優先なら Elysia を独立プロセス（できれば Bun）で立てる構成が最良。
 
-> 注: 上表は 8 エンドポイント同時起動・同一マシンでの相対比較のため、各 RPS は単独計測時より低めに出る可能性がある（リソース競合）。比較は同条件なので有効。Next.js native の p99 が +Elysia より高いのは、同一マシン同時計測時のばらつき（テールの揺れ）の範囲。
+> 注: 上表は 10 エンドポイント同時起動・同一マシンでの相対比較のため、各 RPS は単独計測時より低めに出る可能性がある（リソース競合）。比較は同条件なので有効。Astro / AdonisJS のように RPS が近接する構成や native→+Elysia の維持率は、同一マシン同時計測のばらつき（±数 %）の影響を受けるので幅をもって読むこと。
 
 ## 留意点
 
-- 計測は必ず Next.js / TanStack Start / Astro を **本番ビルド**で行う（`build:*` → `start:*`）。dev モードは大幅に遅く非代表的。
+- 計測は必ず Next.js / TanStack Start / Astro / AdonisJS を **本番ビルド**で行う（`build:*` → `start:*`）。dev モードは大幅に遅く非代表的。
 - Next.js の Route Handler は `export const dynamic = "force-dynamic"` でキャッシュを無効化し、リクエストごとに Elysia を実行させている（単体側と条件を揃えるため）。
 - TanStack Start の Vite ビルドは WinterTC 形式の `fetch` ハンドラを出力するだけなので、本番起動は TanStack が内部利用する [`srvx`](https://github.com/h3js/srvx) で待ち受ける（[`server/prod.mjs`](apps/tanstack-elysia/server/prod.mjs)）。
 - Astro は `output: 'server'` + [`@astrojs/node`](https://docs.astro.build/en/guides/integrations-guide/node/)（standalone）で SSR エンドポイントを本番起動する。
+- AdonisJS は Web Fetch ネイティブではなく Node の `req/res` ベースなので、Elysia 連携はルートハンドラ内で Web `Request` を合成して `elysia.handle()` に渡し、返ってきた Web `Response` を Adonis の `response` に書き戻している（[`start/routes.ts`](apps/adonis-elysia/start/routes.ts)）。api スターターキットの既定ミドルウェア（bodyparser / session / shield / 認証初期化）は `/native` と `/api` の両方を等しく通過するため、両者の比較は公平。`build:adonis` は本番ビルド後に `.env` を `build/` へコピーして本番起動する。
 - 負荷ツールとサーバを同一マシンで動かすため絶対値は環境依存。**相対比較**として読むこと。
