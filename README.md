@@ -2,6 +2,8 @@
 
 ElysiaJS のリクエスト性能を **「Elysia 単体（Node / Bun）」** と **「主要な Web フレームワーク（Next.js / TanStack Start / Astro / AdonisJS / SolidStart / SvelteKit / Nuxt）との連携」** で比較するベンチマーク。各フレームワークでは **素のネイティブ実装（Elysia なし）** と **Elysia 連携** の両方を用意し、Elysia を載せることによる差も測る。あわせて **Hono / Express の単体サーバ**（Node / Bun）も並べ、Elysia 単体との純粋なサーバ性能差も比較する。
 
+> English version: see [README_EN.md](README_EN.md).
+
 ## 比較の狙い
 
 3 つの軸を分けて測定する。
