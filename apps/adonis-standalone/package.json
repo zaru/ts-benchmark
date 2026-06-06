@@ -1,5 +1,5 @@
 {
-  "name": "adonis-elysia",
+  "name": "adonis-standalone",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -58,7 +58,6 @@
   "dependencies": {
     "@elysia-bench/payload": "workspace:*",
     "@elysia-bench/workload": "workspace:*",
-    "elysia": "1.4.28",
     "@adonisjs/auth": "^10.1.0",
     "@adonisjs/core": "^7.3.3",
     "@adonisjs/cors": "^3.0.0",
