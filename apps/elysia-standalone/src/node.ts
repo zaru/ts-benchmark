@@ -1,6 +1,6 @@
 import { node } from "@elysiajs/node"
 import { Elysia } from "elysia"
-import { registerRoutes } from "./routes"
+import { registerRoutes } from "./routes.ts"
 
 // Elysia 単体サーバ（Node ランタイム）。
 // Next.js は Node でしか動かないため、Next.js 連携との比較用ベースライン。

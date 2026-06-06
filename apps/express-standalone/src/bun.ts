@@ -1,4 +1,4 @@
-import { app } from "./app"
+import { app } from "./app.ts"
 
 // Express 単体サーバ（Bun ランタイム）。Express(5) は Bun の Node 互換 API でそのまま動く。
 // Elysia 単体(Bun) との比較用に、Node 版(:3010)とは別ポート(:3012)で待ち受ける。

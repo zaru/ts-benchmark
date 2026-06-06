@@ -1,5 +1,5 @@
 import { Elysia } from "elysia"
-import { registerRoutes } from "./routes"
+import { registerRoutes } from "./routes.ts"
 
 // Elysia 単体サーバ（Bun ランタイム）。
 // アダプタを指定しなければ Elysia は Bun ネイティブ（本来の推奨環境）で動く。

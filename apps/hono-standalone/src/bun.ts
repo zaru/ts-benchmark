@@ -1,4 +1,4 @@
-import { app } from "./app"
+import { app } from "./app.ts"
 
 // Hono 単体サーバ（Bun ランタイム）。Hono は Bun ネイティブの Bun.serve で動く。
 // Elysia 単体(Bun) との比較用に、Node 版(:3009)とは別ポート(:3011)で待ち受ける。

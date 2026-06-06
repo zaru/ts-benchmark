@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/node.ts",
-    "start": "tsx src/node.ts",
-    "dev:fastify": "tsx watch src/fastify.ts",
-    "start:fastify": "tsx src/fastify.ts"
+    "build": "tsc",
+    "predev": "tsc",
+    "dev": "tsc -w --preserveWatchOutput & node --watch dist/node.js",
+    "predev:fastify": "tsc",
+    "dev:fastify": "tsc -w --preserveWatchOutput & node --watch dist/fastify.js",
+    "start": "node dist/node.js",
+    "start:fastify": "node dist/fastify.js"
   },
   "dependencies": {
     "@elysia-bench/payload": "workspace:*",
@@ -21,6 +24,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "tsx": "^4.19.0"
+    "typescript": "^5.9.0"
   }
 }

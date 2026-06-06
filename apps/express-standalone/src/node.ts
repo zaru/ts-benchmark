@@ -1,4 +1,4 @@
-import { app } from "./app"
+import { app } from "./app.ts"
 
 // Express 単体サーバ（Node ランタイム）。Elysia 単体との比較用ベースライン。
 // localhost(::1) でも負荷ツールから到達できるよう :: (デュアルスタック) で待ち受ける。

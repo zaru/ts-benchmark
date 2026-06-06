@@ -7,8 +7,13 @@ set -uo pipefail
 #   1 つずつ処理する。常に計測対象 1 アプリだけを起動するので、アイドルなサーバが RAM を
 #   占有しない。native と +Elysia は同一サーバを起動したまま連続で計測する。
 #
-#   事前に各フレームワークを本番ビルドしておくこと（単体サーバ tsx 系はビルド不要）:
-#     pnpm build:next && pnpm build:tanstack && pnpm build:astro \
+#   事前に各フレームワークを本番ビルドしておくこと:
+#     - full-stack 系（Next.js 等）は各 build スクリプトで本番ビルドが必須。
+#     - NestJS は tsc でコンパイルしてから node 実行するため build が必須。
+#     - Elysia / Hono / Express の単体サーバは Node ネイティブ TS 実行（node src/node.ts）
+#       のためビルド不要。Bun 版も同様にネイティブ実行（ビルド不要）。
+#   ビルドコマンド:
+#     pnpm build:nestjs && pnpm build:next && pnpm build:tanstack && pnpm build:astro \
 #       && pnpm build:adonis && pnpm build:solid && pnpm build:svelte && pnpm build:nuxt
 #   そのうえで:
 #     pnpm bench
@@ -69,7 +74,7 @@ EXPECTED_CANON="$(printf '%s' "${EXPECTED_RAW}" | canon)"
 # 複雑エンドポイント（/db 系）の期待値は共有パッケージの runWorkload() から動的生成する。
 # 全アプリが同一の決定的出力を返す前提なので、これと突き合わせれば「アプリ間で出力が割れて
 # いないか／DB 未シード／Node・Bun でドライバ出力差が出ていないか」を検知できる。
-EXPECTED_DB_CANON="$(npx tsx "${ROOT_DIR}/packages/workload/print-expected.ts" 2>/dev/null | canon)"
+EXPECTED_DB_CANON="$(node "${ROOT_DIR}/packages/workload/print-expected.ts" 2>/dev/null | canon)"
 if [ -z "${EXPECTED_DB_CANON}" ] || [ "${EXPECTED_DB_CANON}" = "__INVALID__" ]; then
   echo "ERROR: 複雑ワークロードの期待値を生成できませんでした。"
   echo "       'pnpm --filter @elysia-bench/workload seed' で workload.sqlite を生成したか確認してください。"

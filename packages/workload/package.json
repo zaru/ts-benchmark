@@ -8,15 +8,14 @@
     ".": "./index.ts"
   },
   "scripts": {
-    "seed": "tsx seed.ts",
-    "print-expected": "tsx print-expected.ts"
+    "seed": "node seed.ts",
+    "print-expected": "node print-expected.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0",
     "drizzle-orm": "^0.36.4"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
-    "tsx": "^4.19.0"
+    "@types/better-sqlite3": "^7.6.11"
   }
 }

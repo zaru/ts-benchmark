@@ -16,6 +16,7 @@
     "start:express:bun": "pnpm --filter express-standalone start:bun",
     "dev:express": "pnpm --filter express-standalone dev",
     "dev:express:bun": "pnpm --filter express-standalone dev:bun",
+    "build:nestjs": "pnpm --filter nestjs-standalone build",
     "start:nestjs": "pnpm --filter nestjs-standalone start",
     "start:nestjs:fastify": "pnpm --filter nestjs-standalone start:fastify",
     "dev:nestjs": "pnpm --filter nestjs-standalone dev",

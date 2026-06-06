@@ -1,6 +1,6 @@
 import "reflect-metadata"
 import { NestFactory } from "@nestjs/core"
-import { AppModule } from "./app.module"
+import { AppModule } from "./app.module.js"
 
 // NestJS 単体サーバ（既定の @nestjs/platform-express）。Express 単体との比較で
 // NestJS フレームワーク層のオーバーヘッドを切り出す。
