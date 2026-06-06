@@ -299,34 +299,35 @@ xychart-beta
 
 #### メモリ使用量（負荷時ピーク RSS、低いほど良い）
 
-負荷時（measure 中）に計測した**ピーク RSS**（起動した `pnpm` プロセスツリー全体の合計）。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。**総フットプリント（共有メモリを重複計上しうる）**のため Node マルチプロセス系はやや過大に出る点に注意（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。
+負荷時（measure 中）に計測した**ピーク RSS**（起動した `pnpm` プロセスツリー全体の合計）。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。**総フットプリント（共有メモリを重複計上しうる）**のため Node マルチプロセス系はやや過大に出る点に注意（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。Elysia 連携（+Elysia）は native との差が ±20MB 程度の誤差なので、ここでは native / 単体のみを掲載する。
 
 | 構成 | Peak RSS |
 | --- | --- |
 | Hono 単体 (Bun) | **227.3 MB** |
 | Elysia 単体 (Bun) | 231.9 MB |
 | Express 単体 (Bun) | 303.7 MB |
-| Nuxt + Elysia | 316.8 MB |
 | Nuxt native | 334.1 MB |
-| SolidStart + Elysia | 373.6 MB |
 | SolidStart native | 377.5 MB |
-| TanStack Start + Elysia | 382.0 MB |
 | TanStack Start native | 400.8 MB |
 | Astro native | 415.8 MB |
 | SvelteKit native | 416.5 MB |
 | Express 単体 (Node) | 422.4 MB |
-| SvelteKit + Elysia | 425.5 MB |
-| Astro + Elysia | 428.1 MB |
 | NestJS 単体 Fastify (Node) | 440.5 MB |
 | NestJS 単体 Express (Node) | 442.5 MB |
 | Hono 単体 (Node) | 456.9 MB |
 | Elysia 単体 (Node) | 460.5 MB |
 | AdonisJS native | 474.9 MB |
-| AdonisJS + Elysia | 482.5 MB |
-| Next.js + Elysia | 515.7 MB |
 | Next.js native | 533.3 MB |
 
-→ **Bun 単一プロセス系が圧倒的に省メモリ**で、Hono/Elysia(Bun) は約 230MB と Node 版（約 460MB）の半分。Node 単体系（tsx ローダ含む総フットプリント）は約 420〜460MB に収束する。フルスタックでは **Next.js が最大（533MB）**、Nuxt が最小（native 334MB）。**Elysia 連携の有無によるメモリ差は ±20MB 程度**でスループットほどの差は出ない（連携方式よりベースのフレームワーク/ランタイムがメモリを支配する）。
+```mermaid
+xychart-beta
+    title "Peak RSS (MB, lower is better)"
+    x-axis ["Hono(Bun)", "Elysia(Bun)", "Express(Bun)", "Nuxt-nat", "Solid-nat", "TanStack-nat", "Astro-nat", "Svelte-nat", "Express(Node)", "NestJS-Fas", "NestJS-Exp", "Hono(Node)", "Elysia(Node)", "Adonis-nat", "Next-nat"]
+    y-axis "MB" 0 --> 600
+    bar [227.3, 231.9, 303.7, 334.1, 377.5, 400.8, 415.8, 416.5, 422.4, 440.5, 442.5, 456.9, 460.5, 474.9, 533.3]
+```
+
+→ **Bun 単一プロセス系が圧倒的に省メモリ**で、Hono/Elysia(Bun) は約 230MB と Node 版（約 460MB）の半分。Node 単体系（tsx ローダ含む総フットプリント）は約 420〜460MB に収束する。フルスタックでは **Next.js が最大（533MB）**、Nuxt が最小（native 334MB）。
 
 ### 考察
 
@@ -389,32 +390,33 @@ xychart-beta
 
 #### メモリ使用量（複雑ワークロード, 負荷時ピーク RSS, 低いほど良い）
 
-複雑ワークロード（`/db`・`/native-db`・`/api/db`）の負荷時ピーク RSS。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。フルスタックの DB エンドポイントは同一サーバで標準エンドポイントの後に計測するため、値は**そこまでの累積ピーク**を含む（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。
+複雑ワークロード（`/db`・`/native-db`）の負荷時ピーク RSS。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。フルスタックの DB エンドポイントは同一サーバで標準エンドポイントの後に計測するため、値は**そこまでの累積ピーク**を含む（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。Elysia 連携（+Elysia）は native との差が誤差なので native / 単体のみを掲載する。
 
 | 構成 | Peak RSS |
 | --- | --- |
 | Hono 単体 DB (Bun) | **287.7 MB** |
 | Express 単体 DB (Bun) | 322.8 MB |
 | Elysia 単体 DB (Bun) | 332.2 MB |
-| Nuxt + Elysia DB | 351.7 MB |
 | Nuxt native DB | 378.2 MB |
-| SolidStart + Elysia DB | 398.5 MB |
 | Hono 単体 DB (Node) | 399.8 MB |
 | Elysia 単体 DB (Node) | 402.8 MB |
-| TanStack Start + Elysia DB | 408.9 MB |
 | SolidStart native DB | 412.8 MB |
 | AdonisJS native DB | 412.9 MB |
-| SvelteKit + Elysia DB | 414.8 MB |
 | NestJS 単体 Fastify DB (Node) | 420.6 MB |
 | Express 単体 DB (Node) | 421.3 MB |
 | TanStack Start native DB | 423.4 MB |
 | NestJS 単体 Express DB (Node) | 432.5 MB |
-| AdonisJS + Elysia DB | 433.5 MB |
-| Astro + Elysia DB | 462.6 MB |
 | SvelteKit native DB | 476.8 MB |
 | Astro native DB | 502.4 MB |
-| Next.js + Elysia DB | 533.1 MB |
 | Next.js native DB | 544.4 MB |
+
+```mermaid
+xychart-beta
+    title "DB workload Peak RSS (MB, lower is better)"
+    x-axis ["Hono(Bun)", "Express(Bun)", "Elysia(Bun)", "Nuxt-nat", "Hono(Node)", "Elysia(Node)", "Solid-nat", "Adonis-nat", "NestJS-Fas", "Express(Node)", "TanStack-nat", "NestJS-Exp", "Svelte-nat", "Astro-nat", "Next-nat"]
+    y-axis "MB" 0 --> 600
+    bar [287.7, 322.8, 332.2, 378.2, 399.8, 402.8, 412.8, 412.9, 420.6, 421.3, 423.4, 432.5, 476.8, 502.4, 544.4]
+```
 
 → 標準エンドポイントと傾向は同じで、**Bun 系（287〜332MB）が省メモリ**・**Next.js が最大（544MB）**。DB 集計のためのバッファや SQLite ドライバを確保しても、ランタイム/フレームワークによる序列はほぼ変わらない。
 
