@@ -181,6 +181,15 @@ curl http://localhost:3000/native-db # Next.js native DB  / curl .../api/db  # +
 | `CONN` | `50` | Number of concurrent connections |
 | `WARMUP` | `5s` | Warmup duration |
 | `READY_TIMEOUT` | `60` | Max wait (seconds) for each server to start. Exceeding it `[skip]`s the app |
+| `MEM_INTERVAL` | `0.5` | Sampling interval (seconds) for peak RSS under load |
+
+### Memory measurement (peak RSS under load)
+
+During measurement, `bench/run.sh` samples the RSS of the running server (the entire `pnpm` process tree) every `MEM_INTERVAL` seconds and prints the **peak** as `Peak RSS: XX.X MB` right after the oha output. Because apps are measured sequentially (only one app is ever running), this is a fair cross-framework comparison unaffected by idle servers. How to read it:
+
+- **Total footprint (shared memory may be double-counted)**: The RSS of each process in the tree is summed directly, so multi-process frameworks (e.g. Next.js cluster workers) count shared pages more than once and may appear larger than actual memory. Treat it as a relative guideline; note that multi-process Node setups are slightly disadvantaged versus single-process Bun setups.
+- **Full-stack values are cumulative peaks**: Each full-stack configuration keeps the same server running while measuring `/native → /api → /native-db → /api/db` in sequence. Memory does not shrink between measurements, so later endpoints report the "peak so far" (trending monotonically upward), not that endpoint's standalone consumption.
+- **Definition of "under load" peak**: Sampling happens only during the measure phase, so it excludes the transient spike from module loading at startup. This differs from "maximum memory consumption."
 
 ```bash
 DURATION=60s CONN=100 pnpm bench
@@ -289,6 +298,37 @@ xychart-beta
     bar [1.25, 1.44, 2.02, 2.11, 2.09, 2.40, 2.86, 3.24, 3.85, 4.64, 4.19, 5.51, 7.74, 8.46, 16.18]
 ```
 
+#### Memory usage (peak RSS under load, lower is better)
+
+**Peak RSS** sampled during the measure phase (sum of the entire `pnpm` process tree). Measured in a separate run from the throughput/latency figures above (same environment, `CONN=50` / `DURATION=30s`). Because it is a **total footprint (shared memory may be double-counted)**, multi-process Node setups appear somewhat inflated (see [Memory measurement](#memory-measurement-peak-rss-under-load)).
+
+| Configuration | Peak RSS |
+| --- | --- |
+| Hono standalone (Bun) | **227.3 MB** |
+| Elysia standalone (Bun) | 231.9 MB |
+| Express standalone (Bun) | 303.7 MB |
+| Nuxt + Elysia | 316.8 MB |
+| Nuxt native | 334.1 MB |
+| SolidStart + Elysia | 373.6 MB |
+| SolidStart native | 377.5 MB |
+| TanStack Start + Elysia | 382.0 MB |
+| TanStack Start native | 400.8 MB |
+| Astro native | 415.8 MB |
+| SvelteKit native | 416.5 MB |
+| Express standalone (Node) | 422.4 MB |
+| SvelteKit + Elysia | 425.5 MB |
+| Astro + Elysia | 428.1 MB |
+| NestJS standalone Fastify (Node) | 440.5 MB |
+| NestJS standalone Express (Node) | 442.5 MB |
+| Hono standalone (Node) | 456.9 MB |
+| Elysia standalone (Node) | 460.5 MB |
+| AdonisJS native | 474.9 MB |
+| AdonisJS + Elysia | 482.5 MB |
+| Next.js + Elysia | 515.7 MB |
+| Next.js native | 533.3 MB |
+
+→ **Single-process Bun setups are by far the most memory-efficient**: Hono/Elysia (Bun) sit around 230 MB, half of their Node counterparts (~460 MB). Node standalone servers (total footprint including the tsx loader) converge around 420–460 MB. Among full-stack setups **Next.js uses the most (533 MB)** while Nuxt uses the least (native 334 MB). **The memory difference from adding Elysia is only about ±20 MB** — far smaller than the throughput gap; the base framework/runtime dominates memory, not the integration style.
+
 ### Discussion
 
 - **Elysia integration overhead depends on the integration approach (the main goal here)**: Frameworks that can delegate the received Web `Request` straight to `elysia.handle()` — **SvelteKit / SolidStart / TanStack (-0 to -2%)** — are essentially negligible. Those interposing `Request`/`Response` conversion — **Astro (-5%) / Next.js (-14%)** — and **AdonisJS (-13%)**, which synthesizes a Web `Request` from Node's `req/res` every time, are somewhat larger. **Nuxt (-39%)** stands out because its native uses Nitro's fastest object-returning path, making the relative gap pronounced (the cost of the bridging path, not Elysia itself). Overall, "which framework you mount on" dominates throughput more than "whether you use Elysia".
@@ -347,6 +387,37 @@ xychart-beta
     y-axis "Requests/sec" 0 --> 1600
     bar [1342, 1338, 1329, 1304, 1280, 1275, 1261, 1252, 1248, 1227, 1223, 1195, 1172, 1133, 1056]
 ```
+
+#### Memory usage (complex workload, peak RSS under load, lower is better)
+
+Peak RSS for the complex workload (`/db` / `/native-db` / `/api/db`). Measured in a separate run from the throughput/latency figures above (same environment, `CONN=50` / `DURATION=30s`). For full-stack apps the DB endpoints are measured on the same server after the standard endpoints, so the values include the **cumulative peak up to that point** (see [Memory measurement](#memory-measurement-peak-rss-under-load)).
+
+| Configuration | Peak RSS |
+| --- | --- |
+| Hono standalone DB (Bun) | **287.7 MB** |
+| Express standalone DB (Bun) | 322.8 MB |
+| Elysia standalone DB (Bun) | 332.2 MB |
+| Nuxt + Elysia DB | 351.7 MB |
+| Nuxt native DB | 378.2 MB |
+| SolidStart + Elysia DB | 398.5 MB |
+| Hono standalone DB (Node) | 399.8 MB |
+| Elysia standalone DB (Node) | 402.8 MB |
+| TanStack Start + Elysia DB | 408.9 MB |
+| SolidStart native DB | 412.8 MB |
+| AdonisJS native DB | 412.9 MB |
+| SvelteKit + Elysia DB | 414.8 MB |
+| NestJS standalone Fastify DB (Node) | 420.6 MB |
+| Express standalone DB (Node) | 421.3 MB |
+| TanStack Start native DB | 423.4 MB |
+| NestJS standalone Express DB (Node) | 432.5 MB |
+| AdonisJS + Elysia DB | 433.5 MB |
+| Astro + Elysia DB | 462.6 MB |
+| SvelteKit native DB | 476.8 MB |
+| Astro native DB | 502.4 MB |
+| Next.js + Elysia DB | 533.1 MB |
+| Next.js native DB | 544.4 MB |
+
+→ The trend matches the standard endpoints: **Bun setups (287–332 MB) are the most efficient** and **Next.js uses the most (544 MB)**. Even after allocating buffers and the SQLite driver for DB aggregation, the runtime/framework ranking barely changes.
 
 ### Discussion (complex workload)
 

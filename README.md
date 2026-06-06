@@ -180,6 +180,15 @@ curl http://localhost:3000/native-db # Next.js native DB  / curl .../api/db  # +
 | `CONN` | `50` | 同時接続数 |
 | `WARMUP` | `5s` | ウォームアップ時間 |
 | `READY_TIMEOUT` | `60` | 各サーバ起動の待機上限（秒）。超えたら `[skip]` |
+| `MEM_INTERVAL` | `0.5` | 負荷時ピーク RSS のサンプリング間隔（秒） |
+
+### メモリ計測（負荷時ピーク RSS）
+
+計測中、`bench/run.sh` は起動中サーバ（`pnpm` プロセスツリー全体）の RSS を `MEM_INTERVAL` 秒ごとにサンプリングし、**ピーク値**を oha 出力の直後に `Peak RSS: XX.X MB` として出力する。逐次計測（常に 1 アプリだけ起動）なので、他のアイドルサーバに影響されずフレームワーク間で公平に比較できる。読むときの注意:
+
+- **総フットプリント（共有メモリを重複計上しうる）**: プロセスツリーの各 RSS を単純合計するため、マルチプロセス系（Next.js の cluster worker 等）は共有ページを重複して数え、実メモリより過大に出ることがある。Node マルチプロセス系は Bun 単一プロセス系よりやや不利に出る点に留意し、相対比較の目安として読むこと。
+- **フルスタックは累積ピーク**: フルスタック各構成は同一サーバを起動したまま `/native → /api → /native-db → /api/db` を連続計測する。メモリは計測間で縮まないため、後続エンドポイントの値は「そこまでの累積ピーク」になり、単調増加気味になる（そのエンドポイント単独の消費ではない）。
+- **「負荷時」ピークの定義**: measure 中のみサンプリングするため、起動直後のモジュールロード時の一時スパイクは含まない。「最大消費メモリ」とは別物。
 
 ```bash
 DURATION=60s CONN=100 pnpm bench
@@ -288,6 +297,37 @@ xychart-beta
     bar [1.25, 1.44, 2.02, 2.11, 2.09, 2.40, 2.86, 3.24, 3.85, 4.64, 4.19, 5.51, 7.74, 8.46, 16.18]
 ```
 
+#### メモリ使用量（負荷時ピーク RSS、低いほど良い）
+
+負荷時（measure 中）に計測した**ピーク RSS**（起動した `pnpm` プロセスツリー全体の合計）。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。**総フットプリント（共有メモリを重複計上しうる）**のため Node マルチプロセス系はやや過大に出る点に注意（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。
+
+| 構成 | Peak RSS |
+| --- | --- |
+| Hono 単体 (Bun) | **227.3 MB** |
+| Elysia 単体 (Bun) | 231.9 MB |
+| Express 単体 (Bun) | 303.7 MB |
+| Nuxt + Elysia | 316.8 MB |
+| Nuxt native | 334.1 MB |
+| SolidStart + Elysia | 373.6 MB |
+| SolidStart native | 377.5 MB |
+| TanStack Start + Elysia | 382.0 MB |
+| TanStack Start native | 400.8 MB |
+| Astro native | 415.8 MB |
+| SvelteKit native | 416.5 MB |
+| Express 単体 (Node) | 422.4 MB |
+| SvelteKit + Elysia | 425.5 MB |
+| Astro + Elysia | 428.1 MB |
+| NestJS 単体 Fastify (Node) | 440.5 MB |
+| NestJS 単体 Express (Node) | 442.5 MB |
+| Hono 単体 (Node) | 456.9 MB |
+| Elysia 単体 (Node) | 460.5 MB |
+| AdonisJS native | 474.9 MB |
+| AdonisJS + Elysia | 482.5 MB |
+| Next.js + Elysia | 515.7 MB |
+| Next.js native | 533.3 MB |
+
+→ **Bun 単一プロセス系が圧倒的に省メモリ**で、Hono/Elysia(Bun) は約 230MB と Node 版（約 460MB）の半分。Node 単体系（tsx ローダ含む総フットプリント）は約 420〜460MB に収束する。フルスタックでは **Next.js が最大（533MB）**、Nuxt が最小（native 334MB）。**Elysia 連携の有無によるメモリ差は ±20MB 程度**でスループットほどの差は出ない（連携方式よりベースのフレームワーク/ランタイムがメモリを支配する）。
+
 ### 考察
 
 - **Elysia 連携のオーバーヘッドは連携方式次第（今回の主目的）**: 受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **SvelteKit / SolidStart / TanStack（-0〜2%）** はほぼ無視できる。`Request`/`Response` 変換を挟む **Astro（-5%）/ Next.js（-14%）**、Node の `req/res` から Web `Request` を毎回合成する **AdonisJS（-13%）** はやや大きい。**Nuxt（-39%）** は native が Nitro のオブジェクト返却最速経路のため相対差が際立つ（Elysia 自体ではなく橋渡し経路のコスト）。総じて「Elysia を使うかどうか」より「どのフレームワークに載せるか」がスループットを支配する。
@@ -346,6 +386,37 @@ xychart-beta
     y-axis "Requests/sec" 0 --> 1600
     bar [1342, 1338, 1329, 1304, 1280, 1275, 1261, 1252, 1248, 1227, 1223, 1195, 1172, 1133, 1056]
 ```
+
+#### メモリ使用量（複雑ワークロード, 負荷時ピーク RSS, 低いほど良い）
+
+複雑ワークロード（`/db`・`/native-db`・`/api/db`）の負荷時ピーク RSS。上のスループット/レイテンシとは別ランで計測した値（同一環境・`CONN=50` / `DURATION=30s`）。フルスタックの DB エンドポイントは同一サーバで標準エンドポイントの後に計測するため、値は**そこまでの累積ピーク**を含む（読み方は[メモリ計測](#メモリ計測負荷時ピーク-rss)を参照）。
+
+| 構成 | Peak RSS |
+| --- | --- |
+| Hono 単体 DB (Bun) | **287.7 MB** |
+| Express 単体 DB (Bun) | 322.8 MB |
+| Elysia 単体 DB (Bun) | 332.2 MB |
+| Nuxt + Elysia DB | 351.7 MB |
+| Nuxt native DB | 378.2 MB |
+| SolidStart + Elysia DB | 398.5 MB |
+| Hono 単体 DB (Node) | 399.8 MB |
+| Elysia 単体 DB (Node) | 402.8 MB |
+| TanStack Start + Elysia DB | 408.9 MB |
+| SolidStart native DB | 412.8 MB |
+| AdonisJS native DB | 412.9 MB |
+| SvelteKit + Elysia DB | 414.8 MB |
+| NestJS 単体 Fastify DB (Node) | 420.6 MB |
+| Express 単体 DB (Node) | 421.3 MB |
+| TanStack Start native DB | 423.4 MB |
+| NestJS 単体 Express DB (Node) | 432.5 MB |
+| AdonisJS + Elysia DB | 433.5 MB |
+| Astro + Elysia DB | 462.6 MB |
+| SvelteKit native DB | 476.8 MB |
+| Astro native DB | 502.4 MB |
+| Next.js + Elysia DB | 533.1 MB |
+| Next.js native DB | 544.4 MB |
+
+→ 標準エンドポイントと傾向は同じで、**Bun 系（287〜332MB）が省メモリ**・**Next.js が最大（544MB）**。DB 集計のためのバッファや SQLite ドライバを確保しても、ランタイム/フレームワークによる序列はほぼ変わらない。
 
 ### 考察（複雑ワークロード）
 

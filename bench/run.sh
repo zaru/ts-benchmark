@@ -18,16 +18,23 @@ set -uo pipefail
 #   計測前に各エンドポイントのレスポンスが期待ペイロードと一致するかを検証し、
 #   計測後に oha の成功率が 100% かも確認する（正常に動いたうえでの計測を担保）。
 #
+#   計測中は負荷時のピーク RSS（起動した pnpm プロセスツリー全体の合計）も記録し、
+#   oha 出力の直後に "Peak RSS: XX.X MB" を出力する。フレームワーク間のメモリ比較用。
+#   ※共有メモリを重複計上しうる総フットプリント値であり、フルスタックは累積ピークになる
+#     （詳細は README の注記を参照）。
+#
 #   パラメータは環境変数で上書き可能:
 #     DURATION       計測時間         (default 30s)
 #     CONN           同時接続数       (default 50)
 #     WARMUP         ウォームアップ時間 (default 5s)
 #     READY_TIMEOUT  起動待ちの上限秒  (default 60)
+#     MEM_INTERVAL   RSS サンプリング間隔・秒 (default 0.5)
 
 DURATION="${DURATION:-30s}"
 CONN="${CONN:-50}"
 WARMUP="${WARMUP:-5s}"
 READY_TIMEOUT="${READY_TIMEOUT:-60}"
+MEM_INTERVAL="${MEM_INTERVAL:-0.5}"
 
 # 複雑ワークロード用 SQLite の絶対パス。各アプリ（特にバンドルされる full-stack）が
 # import.meta.url 由来の相対解決に依存せず同じ DB を読めるよう、ここで固定して渡す。
@@ -127,6 +134,26 @@ stop_server() {
   LAUNCHER_PID=""
 }
 
+# 指定 PID とその全子孫の PID を列挙する（自身を含む）。
+#   pnpm は `pnpm → sh -c "node ..." → node` のように中間シェルを挟むため、必ず再帰で
+#   辿りきる。単層 `pgrep -P` だと中間 sh しか拾えず RSS がほぼ 0 になる。
+tree_pids() {
+  local root="$1" kid
+  echo "${root}"
+  for kid in $(pgrep -P "${root}" 2>/dev/null); do
+    tree_pids "${kid}"
+  done
+}
+
+# 指定 PID のプロセスツリー全体の RSS(KiB) を合計して出力する。
+#   macOS の `ps -o rss=` は KiB 単位。共有メモリを各プロセスで重複計上しうる総フットプリント。
+tree_rss_kb() {
+  local root="$1" pids
+  pids="$(tree_pids "${root}" | paste -sd, -)"
+  [ -n "${pids}" ] || { echo 0; return; }
+  ps -o rss= -p "${pids}" 2>/dev/null | awk '{s+=$1} END {print s+0}'
+}
+
 # 中断時も起動中サーバを確実に停止する
 cleanup() { stop_server "${CURRENT_PORT}"; }
 trap cleanup EXIT INT TERM
@@ -141,7 +168,7 @@ wait_ready() {
 }
 
 run_bench() {
-  local name="$1" url="$2" out rate
+  local name="$1" url="$2" out rate peak_file sampler_pid peak_kb
   echo "============================================================"
   echo " ${name}"
   echo " URL: ${url} / conn=${CONN} / duration=${DURATION}"
@@ -151,8 +178,27 @@ run_bench() {
   oha -z "${WARMUP}" -c "${CONN}" --no-tui "${url}" >/dev/null 2>&1
 
   echo "--- measure (${DURATION}) ---"
+  # 計測中に起動中サーバ（pnpm ツリー全体）の RSS を定期サンプリングし、ピークを記録する。
+  # サブシェルはフォーク時点の LAUNCHER_PID を参照する（計測中は不変なので問題なし）。
+  peak_file="$(mktemp)"
+  (
+    peak=0
+    while :; do
+      cur="$(tree_rss_kb "${LAUNCHER_PID}")"
+      [ "${cur:-0}" -gt "${peak}" ] && peak="${cur}"
+      echo "${peak}" >"${peak_file}"
+      sleep "${MEM_INTERVAL}"
+    done
+  ) &
+  sampler_pid=$!
+
   out="$(oha -z "${DURATION}" -c "${CONN}" --no-tui "${url}")"
   echo "${out}"
+
+  kill "${sampler_pid}" 2>/dev/null
+  wait "${sampler_pid}" 2>/dev/null
+  peak_kb="$(cat "${peak_file}" 2>/dev/null || echo 0)"
+  rm -f "${peak_file}"
 
   # 計測結果が「正常に動いたうえでのもの」かを成功率で確認する。
   rate="$(printf '%s' "${out}" | grep -i 'Success rate:' | grep -oE '[0-9.]+%' | tr -d '%')"
@@ -160,6 +206,9 @@ run_bench() {
     echo ">>> WARNING: ${name} の成功率が ${rate}% です。負荷時に失敗しています — この数値は無効。"
     echo ">>>          サーバの待受アドレス（localhost/IPv6 到達性）や実装を確認すること。"
   fi
+
+  echo "--- peak RSS (process tree) ---"
+  awk "BEGIN { printf \"Peak RSS: %.1f MB\n\", ${peak_kb:-0} / 1024 }"
   echo
 }
 
