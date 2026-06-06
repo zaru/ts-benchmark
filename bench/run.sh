@@ -1,45 +1,33 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
-# ElysiaJS リクエストベンチマーク
-#   各フレームワークは「素のネイティブ実装 /native」と「Elysia 連携 /api」を
-#   同一サーバ・同一ランタイムで両方公開し、Elysia 連携のオーバーヘッドを比較する。
-#   - Elysia 単体 (Node)        : http://localhost:3001/
-#   - Elysia 単体 (Bun)         : http://localhost:3002/
-#   - Hono 単体 (Node)          : http://localhost:3009/
-#   - Express 単体 (Node)       : http://localhost:3010/
-#   - Next.js native / +Elysia  : http://localhost:3000/native , /api
-#   - TanStack native / +Elysia : http://localhost:3003/native , /api
-#   - Astro native / +Elysia    : http://localhost:3004/native , /api
-#   - AdonisJS native / +Elysia : http://localhost:3005/native , /api
-#   - SolidStart native/+Elysia : http://localhost:3006/native , /api
-#   - SvelteKit native/+Elysia  : http://localhost:3007/native , /api
-#   - Nuxt native / +Elysia     : http://localhost:3008/native , /api
+# ElysiaJS リクエストベンチマーク（逐次計測ドライバ）
 #
-# 計測対象のサーバを事前に起動しておくこと（起動していないものは自動でスキップ）:
-#   pnpm start:elysia        # Node 版 (:3001)
-#   pnpm start:elysia:bun    # Bun 版  (:3002)
-#   pnpm start:hono          # Hono 単体 (:3009)
-#   pnpm start:express       # Express 単体 (:3010)
-#   pnpm build:next && pnpm start:next             # Next.js 版 (:3000)
-#   pnpm build:tanstack && pnpm start:tanstack     # TanStack Start 版 (:3003)
-#   pnpm build:astro && pnpm start:astro           # Astro 版 (:3004)
-#   pnpm build:adonis && pnpm start:adonis         # AdonisJS 版 (:3005)
-#   pnpm build:solid && pnpm start:solid           # SolidStart 版 (:3006)
-#   pnpm build:svelte && pnpm start:svelte         # SvelteKit 版 (:3007)
-#   pnpm build:nuxt && pnpm start:nuxt             # Nuxt 版 (:3008)
+#   各アプリを「起動 → 疎通待ち → レスポンス検証 → ウォームアップ → 計測 → 停止」の順に
+#   1 つずつ処理する。常に計測対象 1 アプリだけを起動するので、アイドルなサーバが RAM を
+#   占有しない。native と +Elysia は同一サーバを起動したまま連続で計測する。
 #
-# 計測前に各エンドポイントのレスポンスが期待ペイロードと一致するかを検証し、
-# 一致したものだけを計測対象にする（「正常に動いたうえでの計測」を担保する）。
+#   事前に各フレームワークを本番ビルドしておくこと（単体サーバ tsx 系はビルド不要）:
+#     pnpm build:next && pnpm build:tanstack && pnpm build:astro \
+#       && pnpm build:adonis && pnpm build:solid && pnpm build:svelte && pnpm build:nuxt
+#   そのうえで:
+#     pnpm bench
 #
-# パラメータは環境変数で上書き可能:
-#   DURATION  計測時間   (default 30s)
-#   CONN      同時接続数 (default 50)
-#   WARMUP    ウォームアップ時間 (default 5s)
+#   ビルドし忘れた／起動できないアプリは [skip] される（他は継続）。
+#
+#   計測前に各エンドポイントのレスポンスが期待ペイロードと一致するかを検証し、
+#   計測後に oha の成功率が 100% かも確認する（正常に動いたうえでの計測を担保）。
+#
+#   パラメータは環境変数で上書き可能:
+#     DURATION       計測時間         (default 30s)
+#     CONN           同時接続数       (default 50)
+#     WARMUP         ウォームアップ時間 (default 5s)
+#     READY_TIMEOUT  起動待ちの上限秒  (default 60)
 
 DURATION="${DURATION:-30s}"
 CONN="${CONN:-50}"
 WARMUP="${WARMUP:-5s}"
+READY_TIMEOUT="${READY_TIMEOUT:-60}"
 
 # 全エンドポイントが返すべき共通ペイロード（packages/payload/index.ts と一致させる）
 EXPECTED_RAW='{"message":"Hello Elysia","framework":"elysia","items":[{"id":1,"name":"alpha","active":true},{"id":2,"name":"beta","active":false},{"id":3,"name":"gamma","active":true}],"meta":{"count":3,"version":"1.0.0"}}'
@@ -74,47 +62,79 @@ verify_body() {
   [ "${got}" = "${EXPECTED_CANON}" ]
 }
 
-# "ラベル|URL" のリスト。先頭から順に計測する。
-TARGETS=(
-  "Elysia standalone (Node)|http://localhost:3001/"
-  "Elysia standalone (Bun)|http://localhost:3002/"
-  "Hono standalone (Node)|http://localhost:3009/"
-  "Express standalone (Node)|http://localhost:3010/"
-  "Next.js native (Node)|http://localhost:3000/native"
-  "Next.js + Elysia (Node)|http://localhost:3000/api"
-  "TanStack Start native (Node)|http://localhost:3003/native"
-  "TanStack Start + Elysia (Node)|http://localhost:3003/api"
-  "Astro native (Node)|http://localhost:3004/native"
-  "Astro + Elysia (Node)|http://localhost:3004/api"
-  "AdonisJS native (Node)|http://localhost:3005/native"
-  "AdonisJS + Elysia (Node)|http://localhost:3005/api"
-  "SolidStart native (Node)|http://localhost:3006/native"
-  "SolidStart + Elysia (Node)|http://localhost:3006/api"
-  "SvelteKit native (Node)|http://localhost:3007/native"
-  "SvelteKit + Elysia (Node)|http://localhost:3007/api"
-  "Nuxt native (Node)|http://localhost:3008/native"
-  "Nuxt + Elysia (Node)|http://localhost:3008/api"
+# 計測対象の定義: "起動スクリプト|ポート|エンドポイント定義"
+#   エンドポイント定義 = "ラベル::パス" を ';' で連結（native と +Elysia を同一サーバで列挙）
+APPS=(
+  "start:elysia|3001|Elysia standalone (Node)::/"
+  "start:elysia:bun|3002|Elysia standalone (Bun)::/"
+  "start:hono|3009|Hono standalone (Node)::/"
+  "start:express|3010|Express standalone (Node)::/"
+  "start:next|3000|Next.js native (Node)::/native;Next.js + Elysia (Node)::/api"
+  "start:tanstack|3003|TanStack Start native (Node)::/native;TanStack Start + Elysia (Node)::/api"
+  "start:astro|3004|Astro native (Node)::/native;Astro + Elysia (Node)::/api"
+  "start:adonis|3005|AdonisJS native (Node)::/native;AdonisJS + Elysia (Node)::/api"
+  "start:solid|3006|SolidStart native (Node)::/native;SolidStart + Elysia (Node)::/api"
+  "start:svelte|3007|SvelteKit native (Node)::/native;SvelteKit + Elysia (Node)::/api"
+  "start:nuxt|3008|Nuxt native (Node)::/native;Nuxt + Elysia (Node)::/api"
 )
 
-run_bench() {
-  local name="$1"
-  local url="$2"
+LAUNCHER_PID=""
+CURRENT_PORT=""
 
+# 指定ポートを listen しているプロセスを落とす（pnpm → node の子も含めて確実に止める）。
+free_port() {
+  local port="$1" pids
+  pids="$(lsof -ti tcp:"${port}" 2>/dev/null || true)"
+  [ -n "${pids}" ] && kill ${pids} 2>/dev/null
+  return 0
+}
+
+stop_server() {
+  local port="$1" pids tries=0
+  [ -n "${port}" ] || return 0
+  [ -n "${LAUNCHER_PID}" ] && kill "${LAUNCHER_PID}" 2>/dev/null
+  pids="$(lsof -ti tcp:"${port}" 2>/dev/null || true)"
+  [ -n "${pids}" ] && kill ${pids} 2>/dev/null
+  while lsof -ti tcp:"${port}" >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    if [ "${tries}" -gt 20 ]; then
+      pids="$(lsof -ti tcp:"${port}" 2>/dev/null || true)"
+      [ -n "${pids}" ] && kill -9 ${pids} 2>/dev/null
+      break
+    fi
+    sleep 0.5
+  done
+  LAUNCHER_PID=""
+}
+
+# 中断時も起動中サーバを確実に停止する
+cleanup() { stop_server "${CURRENT_PORT}"; }
+trap cleanup EXIT INT TERM
+
+wait_ready() {
+  local url="$1" waited=0
+  until curl -sf "${url}" >/dev/null 2>&1; do
+    waited=$((waited + 1))
+    if [ "${waited}" -gt $((READY_TIMEOUT * 2)) ]; then return 1; fi
+    sleep 0.5
+  done
+}
+
+run_bench() {
+  local name="$1" url="$2" out rate
   echo "============================================================"
   echo " ${name}"
   echo " URL: ${url} / conn=${CONN} / duration=${DURATION}"
   echo "============================================================"
 
   echo "--- warmup (${WARMUP}) ---"
-  oha -z "${WARMUP}" -c "${CONN}" --no-tui "${url}" >/dev/null
+  oha -z "${WARMUP}" -c "${CONN}" --no-tui "${url}" >/dev/null 2>&1
 
   echo "--- measure (${DURATION}) ---"
-  local out rate
   out="$(oha -z "${DURATION}" -c "${CONN}" --no-tui "${url}")"
   echo "${out}"
 
   # 計測結果が「正常に動いたうえでのもの」かを成功率で確認する。
-  # 100% 未満なら（負荷時の接続失敗・5xx 等）結果は信頼できないので警告する。
   rate="$(printf '%s' "${out}" | grep -i 'Success rate:' | grep -oE '[0-9.]+%' | tr -d '%')"
   if [ -n "${rate}" ] && [ "${rate}" != "100.00" ]; then
     echo ">>> WARNING: ${name} の成功率が ${rate}% です。負荷時に失敗しています — この数値は無効。"
@@ -123,36 +143,56 @@ run_bench() {
   echo
 }
 
-# 到達でき、かつ期待レスポンスを返すエンドポイントだけを計測対象にする
-echo "Checking endpoints (reachability + response body)..."
-available=()
+measured=0
 mismatch=0
-for target in "${TARGETS[@]}"; do
-  name="${target%%|*}"
-  url="${target##*|}"
-  if ! curl -sf "${url}" >/dev/null 2>&1; then
-    echo "  [skip] ${name} (${url}) — 未起動"
-  elif verify_body "${url}"; then
-    echo "  [OK]   ${name} (${url})"
-    available+=("${target}")
-  else
-    echo "  [NG]   ${name} (${url}) — レスポンスが期待ペイロードと不一致。計測から除外"
-    mismatch=1
+for app in "${APPS[@]}"; do
+  IFS='|' read -r script port endpoints <<<"${app}"
+  IFS=';' read -ra eps <<<"${endpoints}"
+  first_path="${eps[0]##*::}"
+
+  echo "############################################################"
+  echo "# ${script} を起動 (:${port})"
+  echo "############################################################"
+
+  free_port "${port}"
+  CURRENT_PORT="${port}"
+  pnpm "${script}" >"/tmp/bench-${port}.log" 2>&1 &
+  LAUNCHER_PID=$!
+
+  if ! wait_ready "http://localhost:${port}${first_path}"; then
+    echo "  [skip] ${script} を起動できませんでした（未ビルド？ ログ: /tmp/bench-${port}.log）"
+    stop_server "${port}"
+    CURRENT_PORT=""
+    echo
+    continue
   fi
+
+  for ep in "${eps[@]}"; do
+    elabel="${ep%%::*}"
+    epath="${ep##*::}"
+    url="http://localhost:${port}${epath}"
+    if verify_body "${url}"; then
+      echo "  [OK] ${elabel} のレスポンスを検証 → 計測"
+      run_bench "${elabel}" "${url}"
+      measured=$((measured + 1))
+    else
+      echo "  [NG] ${elabel} (${url}) — レスポンスが期待ペイロードと不一致。計測スキップ"
+      mismatch=1
+      echo
+    fi
+  done
+
+  stop_server "${port}"
+  CURRENT_PORT=""
 done
-echo
+
+trap - EXIT INT TERM
 
 if [ "${mismatch}" -ne 0 ]; then
-  echo "WARNING: 期待と異なるレスポンスを返すエンドポイントがありました（上記 [NG]）。"
-  echo "         該当サーバの実装を確認すること。計測は正常なエンドポイントのみで続行する。"
-  echo
+  echo "WARNING: 期待と異なるレスポンスを返したエンドポイントがありました（上記 [NG]）。実装を確認すること。"
 fi
 
-if [ "${#available[@]}" -eq 0 ]; then
-  echo "ERROR: 計測可能なエンドポイントがありません。サーバを起動してください。"
+if [ "${measured}" -eq 0 ]; then
+  echo "ERROR: 計測できたエンドポイントがありません。各フレームワークをビルドしてあるか確認してください。"
   exit 1
 fi
-
-for target in "${available[@]}"; do
-  run_bench "${target%%|*}" "${target##*|}"
-done

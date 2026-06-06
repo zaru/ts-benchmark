@@ -73,8 +73,10 @@ apps/
 packages/
   payload/             全エンドポイントが返す共通 JSON ペイロード
 bench/
-  run.sh               oha でウォームアップ→計測。計測前にレスポンスが期待ペイロードと
-                       一致するか検証し、計測後に成功率 100% かも確認する
+  run.sh               各アプリを「起動→疎通待ち→レスポンス検証→ウォームアップ→計測→停止」
+                       の順に 1 つずつ駆動する。常に 1 アプリだけ起動するので RAM を無駄に
+                       占有しない。計測前にレスポンスが期待ペイロードと一致するか検証し、
+                       計測後に成功率 100% かも確認する
 ```
 
 ## セットアップ
@@ -85,50 +87,23 @@ pnpm install
 
 ## 実行手順
 
-計測したい対象を起動する。`bench/run.sh` は **起動しているエンドポイントだけ**を自動で計測するので、全部でも一部だけでもよい。
+各フレームワークを**本番ビルド**しておく（dev モードは非代表的なので必ず build する。単体サーバの Elysia / Hono / Express は `tsx` 起動なのでビルド不要）。サーバの**起動・停止は `pnpm bench`（`bench/run.sh`）が 1 アプリずつ自動で行う**ので、手動で起動しておく必要はない。
 
 ```bash
-# 1) Elysia 単体（Node）
-pnpm start:elysia
-
-# 2) Elysia 単体（Bun）
-pnpm start:elysia:bun
-
-# 2-2) Hono / Express 単体（ビルド不要、tsx でそのまま起動）
-pnpm start:hono
-pnpm start:express
-
-# 3) Next.js を本番ビルドして起動（dev モードは非代表的なので必ず build → start）
+# 1) フレームワークを本番ビルド（一度だけ）
 pnpm build:next
-pnpm start:next
-
-# 4) TanStack Start を本番ビルドして起動（同上）
 pnpm build:tanstack
-pnpm start:tanstack
-
-# 5) Astro を本番ビルドして起動（同上）
 pnpm build:astro
-pnpm start:astro
-
-# 6) AdonisJS を本番ビルドして起動（同上）
 pnpm build:adonis
-pnpm start:adonis
-
-# 7) SolidStart を本番ビルドして起動（同上）
 pnpm build:solid
-pnpm start:solid
-
-# 8) SvelteKit を本番ビルドして起動（同上）
 pnpm build:svelte
-pnpm start:svelte
-
-# 9) Nuxt を本番ビルドして起動（同上）
 pnpm build:nuxt
-pnpm start:nuxt
 
-# 10) ベンチマーク実行
+# 2) 計測（各アプリの 起動→検証→計測→停止 を run.sh が順に実行する）
 pnpm bench
 ```
+
+ビルドし忘れた／起動できないアプリは自動で `[skip]` され、残りの計測は継続する。計測対象を絞りたい場合は `bench/run.sh` の `APPS` 配列を編集する。
 
 動作確認（任意）:
 
@@ -155,6 +130,7 @@ curl http://localhost:3008/native   # Nuxt native         / curl .../api    # + 
 | `DURATION` | `30s` | 計測時間 |
 | `CONN` | `50` | 同時接続数 |
 | `WARMUP` | `5s` | ウォームアップ時間 |
+| `READY_TIMEOUT` | `60` | 各サーバ起動の待機上限（秒）。超えたら `[skip]` |
 
 ```bash
 DURATION=60s CONN=100 pnpm bench
@@ -163,28 +139,28 @@ DURATION=60s CONN=100 pnpm bench
 ## 結果
 
 計測環境: macOS (Darwin 25.5.0, Apple Silicon) / Node 26.3.0 / Bun 1.3.14 / `CONN=50` / `DURATION=30s` / oha 1.14.0。
-18 個を**同時起動して同一 run で**計測したもの（負荷ツールも同一マシン）。全エンドポイントで成功率 100%・レスポンスが期待ペイロードと一致することを計測前後に検証済み。絶対値は環境依存なので**相対比較**として読むこと。
+**各アプリを 1 つずつ起動して計測**（常に計測対象 1 アプリだけが起動。native と +Elysia は同一サーバを起動したまま連続計測）。全エンドポイントで成功率 100%・レスポンスが期待ペイロードと一致することを計測前後に検証済み。絶対値は環境依存なので**相対比較**として読むこと。
 
 | 構成 | Requests/sec | 平均 ms | p50 ms | p99 ms |
 | --- | --- | --- | --- | --- |
-| Elysia 単体 (Bun) | **77,254** | 0.65 | 0.61 | 1.25 |
-| Elysia 単体 (Node) | 48,401 | 1.03 | 0.98 | 2.00 |
-| Hono 単体 (Node) | 40,159 | 1.24 | 1.18 | 2.38 |
-| Nuxt native | 32,699 | 1.53 | 1.40 | 3.08 |
-| Express 単体 (Node) | 31,863 | 1.57 | 1.48 | 2.98 |
-| SvelteKit native | 26,129 | 1.91 | 1.77 | 3.75 |
-| SvelteKit + Elysia | 25,879 | 1.93 | 1.78 | 3.84 |
-| TanStack Start native | 24,121 | 2.07 | 1.90 | 4.00 |
-| TanStack Start + Elysia | 23,662 | 2.11 | 1.95 | 4.05 |
-| Nuxt + Elysia | 20,445 | 2.44 | 2.27 | 4.82 |
-| SolidStart native | 17,019 | 2.94 | 2.64 | 5.41 |
-| SolidStart + Elysia | 16,655 | 3.00 | 2.70 | 5.65 |
-| Astro native | 12,336 | 4.05 | 3.84 | 7.95 |
-| AdonisJS native | 12,169 | 4.11 | 3.98 | 8.02 |
-| Astro + Elysia | 11,841 | 4.22 | 4.00 | 8.40 |
-| AdonisJS + Elysia | 10,861 | 4.60 | 4.48 | 8.89 |
-| Next.js native | 6,762 | 7.39 | 7.06 | 14.54 |
-| Next.js + Elysia | 5,693 | 8.78 | 8.27 | 17.20 |
+| Elysia 単体 (Bun) | **78,143** | 0.64 | 0.60 | 1.24 |
+| Elysia 単体 (Node) | 48,723 | 1.03 | 0.97 | 1.98 |
+| Hono 単体 (Node) | 47,325 | 1.06 | 1.00 | 2.05 |
+| Express 単体 (Node) | 37,284 | 1.34 | 1.26 | 2.61 |
+| Nuxt native | 33,874 | 1.47 | 1.34 | 3.11 |
+| TanStack Start native | 25,366 | 1.97 | 1.78 | 4.00 |
+| TanStack Start + Elysia | 24,707 | 2.02 | 1.82 | 4.15 |
+| SvelteKit native | 23,638 | 2.11 | 1.84 | 5.10 |
+| SvelteKit + Elysia | 23,079 | 2.17 | 1.87 | 5.40 |
+| Nuxt + Elysia | 20,755 | 2.41 | 2.28 | 4.83 |
+| SolidStart native | 17,956 | 2.78 | 2.49 | 5.30 |
+| SolidStart + Elysia | 17,745 | 2.82 | 2.53 | 5.37 |
+| AdonisJS native | 12,605 | 3.97 | 3.85 | 7.68 |
+| Astro native | 11,633 | 4.30 | 4.03 | 8.99 |
+| Astro + Elysia | 10,965 | 4.56 | 4.33 | 8.76 |
+| AdonisJS + Elysia | 10,845 | 4.61 | 4.43 | 9.11 |
+| Next.js native | 7,194 | 6.95 | 6.60 | 13.86 |
+| Next.js + Elysia | 6,176 | 8.10 | 7.70 | 16.13 |
 
 成功率はいずれも 100%（全レスポンス 200・ボディは共通ペイロードと一致）。
 
@@ -192,34 +168,34 @@ DURATION=60s CONN=100 pnpm bench
 
 | 構成 | Requests/sec | Elysia(Node) 比 |
 | --- | --- | --- |
-| Elysia 単体 (Node) | 48,401 | 1.00 |
-| Hono 単体 (Node) | 40,159 | **0.83** |
-| Express 単体 (Node) | 31,863 | **0.66** |
+| Elysia 単体 (Node) | 48,723 | 1.00 |
+| Hono 単体 (Node) | 47,325 | **0.97** |
+| Express 単体 (Node) | 37,284 | **0.77** |
 
-→ 素の HTTP サーバとして見ると **Elysia(Node) > Hono > Express**。Elysia は Bun だけでなく `@elysiajs/node` 上でも Hono / Express を上回る。Express(5) は最も枯れているぶん相対的に重い。
+→ 素の HTTP サーバとして見ると **Elysia(Node) ≈ Hono > Express**。1 アプリずつ分離計測すると Elysia(Node) と Hono はほぼ互角（差 ~3%、ばらつき範囲）。Elysia は Bun 専用ではなく `@elysiajs/node` でも Hono と肩を並べる。Express(5) は約 0.77 倍で、最も枯れているぶん相対的に重い。
 
 #### Elysia 連携のオーバーヘッド（native → +Elysia、同一サーバ）
 
 | フレームワーク | native RPS | +Elysia RPS | Elysia 維持率 |
 | --- | --- | --- | --- |
-| SvelteKit | 26,129 | 25,879 | **99.0%**（約 -1%） |
-| SolidStart | 17,019 | 16,655 | **97.9%**（約 -2%） |
-| TanStack Start | 24,121 | 23,662 | **98.1%**（約 -2%） |
-| Astro | 12,336 | 11,841 | **96.0%**（約 -4%） |
-| AdonisJS | 12,169 | 10,861 | **89.3%**（約 -11%） |
-| Next.js | 6,762 | 5,693 | **84.2%**（約 -16%） |
-| Nuxt | 32,699 | 20,445 | **62.5%**（約 -37%） |
+| SolidStart | 17,956 | 17,745 | **98.8%**（約 -1%） |
+| TanStack Start | 25,366 | 24,707 | **97.4%**（約 -3%） |
+| SvelteKit | 23,638 | 23,079 | **97.6%**（約 -2%） |
+| Astro | 11,633 | 10,965 | **94.3%**（約 -6%） |
+| Next.js | 7,194 | 6,176 | **85.8%**（約 -14%） |
+| AdonisJS | 12,605 | 10,845 | **86.0%**（約 -14%） |
+| Nuxt | 33,874 | 20,755 | **61.3%**（約 -39%） |
 
-→ Elysia 連携のオーバーヘッドはフレームワークの連携方式に強く依存する。受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **SvelteKit / SolidStart / TanStack（-1〜2%）** はほぼ無視できる。`Request`/`Response` 変換を挟む Astro（-4%）・Next.js（-16%）、Node の `req/res` から Web `Request` を毎回合成する AdonisJS（-11%）はやや大きい。**Nuxt の -37% は別格**で、これは native 側が Nitro の「オブジェクトをそのまま返す」最速経路（後述のとおり全 native 中で最速）なのに対し、Elysia 側は `toWebRequest()` で Web `Request` を組み立て、返ってきた Web `Response` を Nitro が再変換するためコスト差が際立つ（Elysia 自体ではなく橋渡し経路の差）。
+→ Elysia 連携のオーバーヘッドはフレームワークの連携方式に強く依存する。受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **SolidStart / TanStack / SvelteKit（-1〜3%）** はほぼ無視できる。`Request`/`Response` 変換を挟む Astro（-6%）・Next.js（-14%）、Node の `req/res` から Web `Request` を毎回合成する AdonisJS（-14%）はやや大きい。**Nuxt の -39% は別格**で、これは native 側が Nitro の「オブジェクトをそのまま返す」最速経路（後述のとおり全 native 中で最速）なのに対し、Elysia 側は `toWebRequest()` で Web `Request` を組み立て、返ってきた Web `Response` を Nitro が再変換するためコスト差が際立つ（Elysia 自体ではなく橋渡し経路の差）。
 
 #### スループット（Requests/sec、高いほど良い）
 
 ```mermaid
 xychart-beta
     title "Requests/sec (higher is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "SvelteKit+E", "TanStack+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "Requests/sec" 0 --> 80000
-    bar [77254, 48401, 40159, 31863, 25879, 23662, 20445, 16655, 11841, 10861, 5693]
+    bar [78143, 48723, 47325, 37284, 24707, 23079, 20755, 17745, 10965, 10845, 6176]
 ```
 
 #### レイテンシ p50（ms、低いほど良い）
@@ -227,9 +203,9 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p50 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "SvelteKit+E", "TanStack+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "ms" 0 --> 9
-    bar [0.61, 0.98, 1.18, 1.48, 1.78, 1.95, 2.27, 2.70, 4.00, 4.48, 8.27]
+    bar [0.60, 0.97, 1.00, 1.26, 1.82, 1.87, 2.28, 2.53, 4.33, 4.43, 7.70]
 ```
 
 #### レイテンシ p99（ms、低いほど良い）
@@ -237,24 +213,24 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p99 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "SvelteKit+E", "TanStack+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Elysia(Node)", "Hono", "Express", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "ms" 0 --> 18
-    bar [1.25, 2.00, 2.38, 2.98, 3.84, 4.05, 4.82, 5.65, 8.40, 8.89, 17.20]
+    bar [1.24, 1.98, 2.05, 2.61, 4.15, 5.40, 4.83, 5.37, 8.76, 9.11, 16.13]
 ```
 
 ### 考察
 
-- **Elysia 連携のオーバーヘッドは連携方式次第（今回の主目的）**: 受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **SvelteKit / SolidStart / TanStack（-1〜2%）** はほぼ無視できる。`Request`/`Response` 変換を挟む **Astro（-4%）/ Next.js（-16%）**、Node の `req/res` から Web `Request` を毎回合成する **AdonisJS（-11%）** はやや大きい。**Nuxt（-37%）** は native が Nitro のオブジェクト返却最速経路のため相対差が際立つ（Elysia 自体ではなく橋渡し経路のコスト）。総じて「Elysia を使うかどうか」より「どのフレームワークに載せるか」がスループットを支配する。
-- **単体サーバ比較（Elysia なし）**: 素の HTTP サーバとしては Node 上で **Elysia(48,401) > Hono(40,159) > Express(31,863)**。Elysia は Bun 専用ではなく `@elysiajs/node` でも Hono を上回り、Express(5) より約 1.5 倍速い。Hono は Elysia(Node) の約 0.83 倍と健闘。
-- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準に native のスループットを見ると、Nuxt ≒ 0.68 倍、SvelteKit ≒ 0.54 倍、TanStack ≒ 0.50 倍、SolidStart ≒ 0.35 倍、Astro ≒ 0.25 倍、AdonisJS ≒ 0.25 倍、Next.js ≒ 0.14 倍。**Nuxt（Nitro）の native が突出して速く**（オブジェクトをそのまま返す最速経路）、次いで SvelteKit ≒ TanStack、SolidStart が中位、Astro ≒ AdonisJS、最後に Next.js の Route Handler 層が最も重い。AdonisJS は api スターターキットの bodyparser / session / shield / 認証初期化を全リクエストで通過する分が乗る。
+- **Elysia 連携のオーバーヘッドは連携方式次第（今回の主目的）**: 受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **SolidStart / TanStack / SvelteKit（-1〜3%）** はほぼ無視できる。`Request`/`Response` 変換を挟む **Astro（-6%）/ Next.js（-14%）**、Node の `req/res` から Web `Request` を毎回合成する **AdonisJS（-14%）** はやや大きい。**Nuxt（-39%）** は native が Nitro のオブジェクト返却最速経路のため相対差が際立つ（Elysia 自体ではなく橋渡し経路のコスト）。総じて「Elysia を使うかどうか」より「どのフレームワークに載せるか」がスループットを支配する。
+- **単体サーバ比較（Elysia なし）**: 素の HTTP サーバとしては Node 上で **Elysia(48,723) ≈ Hono(47,325) > Express(37,284)**。1 アプリずつ分離して測ると Elysia(Node) と Hono はほぼ互角（差 ~3%、ばらつき範囲）で、Elysia は Bun 専用ではなく `@elysiajs/node` でも Hono と肩を並べる。Express(5) は約 0.77 倍。
+- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準に native のスループットを見ると、Nuxt ≒ 0.70 倍、TanStack ≒ 0.52 倍、SvelteKit ≒ 0.49 倍、SolidStart ≒ 0.37 倍、AdonisJS ≒ 0.26 倍、Astro ≒ 0.24 倍、Next.js ≒ 0.15 倍。**Nuxt（Nitro）の native が突出して速く**（オブジェクトをそのまま返す最速経路）、次いで TanStack ≒ SvelteKit、SolidStart が中位、AdonisJS ≒ Astro、最後に Next.js の Route Handler 層が最も重い。AdonisJS は api スターターキットの bodyparser / session / shield / 認証初期化を全リクエストで通過する分が乗る。
 - **ランタイム差（Node vs Bun）**: 同じ Elysia 単体でも Bun は Node の **約 1.6 倍のスループット**。Elysia 本来の推奨環境である Bun が最速。
-- **総合**: 最速の Elysia 単体(Bun) を 100% とすると、Node 単体 ≒ 63%、Hono ≒ 52%、Express ≒ 41%、（+Elysia 連携で）SvelteKit / TanStack ≒ 31%、Nuxt ≒ 26%、SolidStart ≒ 22%、Astro ≒ 15%、AdonisJS ≒ 14%、Next.js ≒ 7%。フルスタック連携しつつ API 性能も重視するなら **SvelteKit / TanStack Start / Nuxt** が有利（Nuxt は native を直接使えばさらに速い）。純粋な API スループットが最優先なら Elysia を独立プロセス（できれば Bun）で立てる構成が最良。
+- **総合**: 最速の Elysia 単体(Bun) を 100% とすると、Node 単体 ≒ 62%、Hono ≒ 61%、Express ≒ 48%、（+Elysia 連携で）TanStack ≒ 32%、SvelteKit ≒ 30%、Nuxt ≒ 27%、SolidStart ≒ 23%、Astro ≒ 14%、AdonisJS ≒ 14%、Next.js ≒ 8%。フルスタック連携しつつ API 性能も重視するなら **TanStack Start / SvelteKit / Nuxt** が有利（Nuxt は native を直接使えばさらに速い）。純粋な API スループットが最優先なら Elysia を独立プロセス（できれば Bun）で立てる構成が最良。
 
-> 注: 上表は 18 エンドポイント同時起動・同一マシンでの相対比較のため、各 RPS は単独計測時より低めに出る可能性がある（リソース競合）。比較は同条件なので有効。RPS が近接する構成（SvelteKit / TanStack など）や native→+Elysia の維持率は、同一マシン同時計測のばらつき（±数 %）の影響を受けるので幅をもって読むこと。
+> 注: 各アプリは 1 つずつ起動・停止して計測（常に対象 1 アプリのみ）。native と +Elysia は同一サーバを起動したまま連続で測るので、その差は同条件。一方アプリ間の比較は計測時刻がずれるため、CPU のターボ/サーマル状態など時刻依存の揺らぎ（±数 %）の影響を受ける。RPS が近接する構成（Elysia(Node)/Hono、TanStack/SvelteKit など）は幅をもって読むこと。
 
 ## 留意点
 
-- 計測は必ず各フレームワーク（Next.js / TanStack Start / Astro / AdonisJS / SolidStart / SvelteKit / Nuxt）を **本番ビルド**で行う（`build:*` → `start:*`）。dev モードは大幅に遅く非代表的。
+- 計測は必ず各フレームワーク（Next.js / TanStack Start / Astro / AdonisJS / SolidStart / SvelteKit / Nuxt）を **本番ビルド**しておく（`build:*` を実行。起動は `pnpm bench` が自動で行う）。dev モードは大幅に遅く非代表的。未ビルドのアプリは自動で `[skip]` される。
 - Next.js の Route Handler は `export const dynamic = "force-dynamic"` でキャッシュを無効化し、リクエストごとに Elysia を実行させている（単体側と条件を揃えるため）。
 - TanStack Start の Vite ビルドは WinterTC 形式の `fetch` ハンドラを出力するだけなので、本番起動は TanStack が内部利用する [`srvx`](https://github.com/h3js/srvx) で待ち受ける（[`server/prod.mjs`](apps/tanstack-elysia/server/prod.mjs)）。
 - Astro は `output: 'server'` + [`@astrojs/node`](https://docs.astro.build/en/guides/integrations-guide/node/)（standalone）で SSR エンドポイントを本番起動する。
