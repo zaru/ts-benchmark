@@ -20,6 +20,15 @@
     "build:adonis": "pnpm --filter adonis-elysia build",
     "start:adonis": "pnpm --filter adonis-elysia start",
     "dev:adonis": "pnpm --filter adonis-elysia dev",
+    "build:solid": "pnpm --filter solidstart-elysia build",
+    "start:solid": "pnpm --filter solidstart-elysia start",
+    "dev:solid": "pnpm --filter solidstart-elysia dev",
+    "build:svelte": "pnpm --filter sveltekit-elysia build",
+    "start:svelte": "pnpm --filter sveltekit-elysia start",
+    "dev:svelte": "pnpm --filter sveltekit-elysia dev",
+    "build:nuxt": "pnpm --filter nuxt-elysia build",
+    "start:nuxt": "pnpm --filter nuxt-elysia start",
+    "dev:nuxt": "pnpm --filter nuxt-elysia dev",
     "bench": "bash bench/run.sh"
   },
   "packageManager": "pnpm@10.24.0"
