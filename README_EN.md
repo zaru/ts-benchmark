@@ -193,13 +193,15 @@ Measurement environment: macOS (Darwin 25.5.0, Apple Silicon) / Node 26.3.0 / Bu
 
 | Configuration | Requests/sec | Avg ms | p50 ms | p99 ms |
 | --- | --- | --- | --- | --- |
-| Elysia standalone (Bun) | **78,496** | 0.64 | 0.61 | 1.24 |
-| Hono standalone (Bun) | 68,898 | 0.72 | 0.69 | 1.40 |
-| Elysia standalone (Node) | 49,225 | 1.01 | 0.96 | 1.97 |
-| Express standalone (Bun) | 48,130 | 1.04 | 0.97 | 1.96 |
-| Hono standalone (Node) | 47,366 | 1.05 | 1.02 | 2.04 |
-| Express standalone (Node) | 38,144 | 1.31 | 1.25 | 2.52 |
+| Elysia standalone (Bun) | **77,556** | 0.64 | 0.60 | 1.25 |
+| Hono standalone (Bun) | 67,266 | 0.74 | 0.69 | 1.44 |
+| Elysia standalone (Node) | 48,444 | 1.03 | 0.98 | 2.02 |
+| Hono standalone (Node) | 46,367 | 1.08 | 1.01 | 2.11 |
+| Express standalone (Bun) | 46,129 | 1.08 | 0.99 | 2.09 |
+| NestJS standalone Fastify (Node) | 40,438 | 1.24 | 1.17 | 2.40 |
 | Nuxt native | 38,038 | 1.31 | 1.21 | 2.57 |
+| Express standalone (Node) | 34,801 | 1.44 | 1.35 | 2.86 |
+| NestJS standalone Express (Node) | 33,351 | 1.50 | 1.35 | 3.24 |
 | TanStack Start native | 26,156 | 1.91 | 1.75 | 3.81 |
 | TanStack Start + Elysia | 25,622 | 1.95 | 1.79 | 3.85 |
 | SvelteKit native | 24,962 | 2.00 | 1.82 | 4.61 |
@@ -222,24 +224,26 @@ Sorted within each runtime, using Elysia standalone as the baseline.
 
 | Configuration | Requests/sec | Ratio vs Elysia (same runtime) |
 | --- | --- | --- |
-| Elysia standalone (Node) | 49,225 | 1.00 |
-| Hono standalone (Node) | 47,366 | **0.96** |
-| Express standalone (Node) | 38,144 | **0.77** |
-| Elysia standalone (Bun) | 78,496 | 1.00 |
-| Hono standalone (Bun) | 68,898 | **0.88** |
-| Express standalone (Bun) | 48,130 | **0.61** |
+| Elysia standalone (Node) | 48,444 | 1.00 |
+| Hono standalone (Node) | 46,367 | **0.96** |
+| NestJS standalone Fastify (Node) | 40,438 | **0.83** |
+| Express standalone (Node) | 34,801 | **0.72** |
+| NestJS standalone Express (Node) | 33,351 | **0.69** |
+| Elysia standalone (Bun) | 77,556 | 1.00 |
+| Hono standalone (Bun) | 67,266 | **0.87** |
+| Express standalone (Bun) | 46,129 | **0.59** |
 
-→ As raw HTTP servers, the ordering **Elysia ≥ Hono > Express** holds on both Node and Bun. On Node, Elysia and Hono are roughly tied (~4% gap, within variance), and Elysia is not Bun-only — it keeps up with Hono via `@elysiajs/node` too. On Bun, Elysia pulls ~12% ahead of Hono (Bun native is Elysia's home turf). Express(5), being the most mature, gains the least on faster runtimes — ~0.77x on Node and ~0.61x on Bun — making it relatively heavy.
+→ As raw HTTP servers, the ordering **Elysia ≥ Hono > Express** holds on both Node and Bun. On Node, Elysia and Hono are roughly tied (~4% gap, within variance), and Elysia is not Bun-only — it keeps up with Hono via `@elysiajs/node` too. On Bun, Elysia pulls ~13% ahead of Hono (Bun native is Elysia's home turf). Express(5), being the most mature, gains the least on faster runtimes — ~0.72x on Node and ~0.59x on Bun — making it relatively heavy. **NestJS** (Node only) lands at 0.83 vs Elysia on the Fastify adapter (above raw Express(0.72) — even with the NestJS layer, Fastify's faster HTTP layer shows through) and 0.69 on the Express adapter (roughly on par with raw Express, so NestJS's framework-layer overhead is small and the adapter dominates).
 
 #### Runtime difference (Node → Bun, same framework)
 
 | Configuration | Node RPS | Bun RPS | Bun multiplier |
 | --- | --- | --- | --- |
-| Elysia standalone | 49,225 | 78,496 | **×1.59** |
-| Hono standalone | 47,366 | 68,898 | **×1.45** |
-| Express standalone | 38,144 | 48,130 | **×1.26** |
+| Elysia standalone | 48,444 | 77,556 | **×1.60** |
+| Hono standalone | 46,367 | 67,266 | **×1.45** |
+| Express standalone | 34,801 | 46,129 | **×1.33** |
 
-→ Every framework gains throughput on Bun, but the gain depends on the framework. **Elysia (×1.59)** benefits the most, followed by Hono (×1.45) and Express (×1.26). Elysia is designed with Bun native in mind, so it gains the most when switching to Bun. Express, running through the Node-compat API, gains the least on Bun.
+→ Every framework gains throughput on Bun, but the gain depends on the framework. **Elysia (×1.60)** benefits the most, followed by Hono (×1.45) and Express (×1.33). Elysia is designed with Bun native in mind, so it gains the most when switching to Bun. NestJS is excluded from this comparison since it was measured on Node only.
 
 #### Elysia integration overhead (native → +Elysia, same server)
 
@@ -260,9 +264,9 @@ Sorted within each runtime, using Elysia standalone as the baseline.
 ```mermaid
 xychart-beta
     title "Requests/sec (higher is better)"
-    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Express(Bun)", "Hono(Node)", "Express(Node)", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Hono(Node)", "Express(Bun)", "NestJS-Fas", "Express(Node)", "NestJS-Exp", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "Requests/sec" 0 --> 80000
-    bar [78496, 68898, 49225, 48130, 47366, 38144, 25622, 24872, 23142, 16940, 12221, 11464, 6111]
+    bar [77556, 67266, 48444, 46367, 46129, 40438, 34801, 33351, 25622, 24872, 23142, 16940, 12221, 11464, 6111]
 ```
 
 #### Latency p50 (ms, lower is better)
@@ -270,9 +274,9 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p50 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Express(Bun)", "Hono(Node)", "Express(Node)", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Hono(Node)", "Express(Bun)", "NestJS-Fas", "Express(Node)", "NestJS-Exp", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "ms" 0 --> 9
-    bar [0.61, 0.69, 0.96, 0.97, 1.02, 1.25, 1.79, 1.77, 2.09, 2.77, 3.94, 4.25, 7.74]
+    bar [0.60, 0.69, 0.98, 1.01, 0.99, 1.17, 1.35, 1.35, 1.79, 1.77, 2.09, 2.77, 3.94, 4.25, 7.74]
 ```
 
 #### Latency p99 (ms, lower is better)
@@ -280,39 +284,41 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Latency p99 (ms, lower is better)"
-    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Express(Bun)", "Hono(Node)", "Express(Node)", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Hono(Bun)", "Elysia(Node)", "Hono(Node)", "Express(Bun)", "NestJS-Fas", "Express(Node)", "NestJS-Exp", "TanStack+E", "SvelteKit+E", "Nuxt+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "ms" 0 --> 18
-    bar [1.24, 1.40, 1.97, 1.96, 2.04, 2.52, 3.85, 4.64, 4.19, 5.51, 7.74, 8.46, 16.18]
+    bar [1.25, 1.44, 2.02, 2.11, 2.09, 2.40, 2.86, 3.24, 3.85, 4.64, 4.19, 5.51, 7.74, 8.46, 16.18]
 ```
 
 ### Discussion
 
 - **Elysia integration overhead depends on the integration approach (the main goal here)**: Frameworks that can delegate the received Web `Request` straight to `elysia.handle()` — **SvelteKit / SolidStart / TanStack (-0 to -2%)** — are essentially negligible. Those interposing `Request`/`Response` conversion — **Astro (-5%) / Next.js (-14%)** — and **AdonisJS (-13%)**, which synthesizes a Web `Request` from Node's `req/res` every time, are somewhat larger. **Nuxt (-39%)** stands out because its native uses Nitro's fastest object-returning path, making the relative gap pronounced (the cost of the bridging path, not Elysia itself). Overall, "which framework you mount on" dominates throughput more than "whether you use Elysia".
-- **Standalone server comparison (without Elysia)**: As raw HTTP servers, the ordering is **Elysia ≥ Hono > Express** on both Node and Bun. On Node, **Elysia(49,225) ≈ Hono(47,366) > Express(38,144)** — Elysia and Hono are roughly tied (~4% gap, within variance), and Elysia keeps up with Hono via `@elysiajs/node` rather than being Bun-only. On Bun, **Elysia(78,496) > Hono(68,898) > Express(48,130)** — Elysia pulls ~12% ahead of Hono. Express(5) is ~0.77x on Node and ~0.61x on Bun.
-- **Per-framework cost (vs the same Node runtime)**: Taking Elysia standalone (Node) as the baseline, native throughput is ~0.77x for Nuxt, ~0.53x for TanStack, ~0.51x for SvelteKit, ~0.35x for SolidStart, ~0.27x for AdonisJS, ~0.26x for Astro, and ~0.15x for Next.js. **Nuxt (Nitro) native is outstandingly fast** (the fastest object-returning path), followed by TanStack ≈ SvelteKit, then SolidStart in the middle, AdonisJS ≈ Astro, and finally Next.js's Route Handler layer being the heaviest. AdonisJS pays for passing every request through the api starter kit's bodyparser / session / shield / auth initialization.
-- **Runtime difference (Node → Bun)**: Switching to Bun raises throughput, but by varying amounts: **Elysia ×1.59 > Hono ×1.45 > Express ×1.26**. Elysia, designed with Bun native in mind, benefits the most, and Bun — Elysia's recommended environment — is the fastest across all configurations. Hono also gains a lot on Bun (68,898 RPS), even surpassing Elysia on Node to take second place overall.
-- **Overall**: Taking the fastest Elysia standalone (Bun) as 100%, we get Hono(Bun) ≈ 88%, Elysia(Node) ≈ 63%, Express(Bun) ≈ 61%, Hono(Node) ≈ 60%, Express(Node) ≈ 49%, and (with +Elysia integration) TanStack ≈ 33%, SvelteKit ≈ 32%, Nuxt ≈ 29%, SolidStart ≈ 22%, Astro ≈ 16%, AdonisJS ≈ 15%, Next.js ≈ 8%. If you want full-stack integration while still valuing API performance, **TanStack Start / SvelteKit / Nuxt** are favorable (Nuxt is even faster if you use native directly). If pure API throughput is the top priority, standing up Elysia (preferably on Bun) as a separate process is best, with Hono following closely if Bun is available.
+- **Standalone server comparison (without Elysia)**: As raw HTTP servers, the ordering is **Elysia ≥ Hono > Express** on both Node and Bun. On Node, **Elysia(48,444) ≈ Hono(46,367) > Express(34,801)** — Elysia and Hono are roughly tied (~4% gap, within variance), and Elysia keeps up with Hono via `@elysiajs/node` rather than being Bun-only. On Bun, **Elysia(77,556) > Hono(67,266) > Express(46,129)** — Elysia pulls ~13% ahead of Hono. Express(5) is ~0.72x on Node and ~0.59x on Bun. **NestJS** (Node only) lands above raw Express on the Fastify adapter (40,438, 0.83 vs Elysia) and roughly on par with raw Express on the Express adapter (33,351, 0.69 vs Elysia) — NestJS's framework-layer overhead is small and the adapter's own characteristics dominate.
+- **Per-framework cost (vs the same Node runtime)**: Taking Elysia standalone (Node) as the baseline, native throughput is ~0.79x for Nuxt, ~0.54x for TanStack, ~0.52x for SvelteKit, ~0.35x for SolidStart, ~0.27x for AdonisJS, ~0.26x for Astro, and ~0.15x for Next.js. **Nuxt (Nitro) native is outstandingly fast** (the fastest object-returning path), followed by TanStack ≈ SvelteKit, then SolidStart in the middle, AdonisJS ≈ Astro, and finally Next.js's Route Handler layer being the heaviest. AdonisJS pays for passing every request through the api starter kit's bodyparser / session / shield / auth initialization.
+- **Runtime difference (Node → Bun)**: Switching to Bun raises throughput, but by varying amounts: **Elysia ×1.60 > Hono ×1.45 > Express ×1.33**. Elysia, designed with Bun native in mind, benefits the most, and Bun — Elysia's recommended environment — is the fastest across all configurations. Hono also gains a lot on Bun (67,266 RPS), even surpassing Elysia on Node to take second place overall.
+- **Overall**: Taking the fastest Elysia standalone (Bun) as 100%, we get Hono(Bun) ≈ 87%, Elysia(Node) ≈ 63%, Hono(Node) ≈ 60%, Express(Bun) ≈ 59%, NestJS(Fastify) ≈ 52%, Express(Node) ≈ 45%, NestJS(Express) ≈ 43%, and (with +Elysia integration) TanStack ≈ 33%, SvelteKit ≈ 32%, Nuxt ≈ 30%, SolidStart ≈ 22%, Astro ≈ 16%, AdonisJS ≈ 15%, Next.js ≈ 8%. If you want full-stack integration while still valuing API performance, **TanStack Start / SvelteKit / Nuxt** are favorable (Nuxt is even faster if you use native directly). If pure API throughput is the top priority, standing up Elysia (preferably on Bun) as a separate process is best, with Hono following closely if Bun is available.
 
 > Note: each app is started and stopped one at a time (only the target app is ever running). Native and +Elysia are measured back-to-back while the same server stays up, so their difference is under identical conditions. Cross-app comparisons, however, are measured at different times, so they're subject to time-dependent fluctuations (CPU turbo/thermal state, etc., ±a few %). Read configurations with close RPS (Elysia(Node)/Hono, TanStack/SvelteKit, etc.) with some margin.
 
 ## Results (complex workload / DB aggregation endpoints)
 
-Measurement results for the [complex workload (DB aggregation) endpoints](#complex-workload-db-aggregation-endpoints) (`/db` / `/native-db` / `/api/db`). Same measurement conditions (`CONN=50` / `DURATION=30s` / oha), same machine, each app started one at a time. All 20 configurations were validated before and after measurement to have a 100% success rate and responses matching the expected value (the deterministic output of `runWorkload()`). Because SQLite is queried three times and aggregated on the application side, each request takes about 33–47 ms.
+Measurement results for the [complex workload (DB aggregation) endpoints](#complex-workload-db-aggregation-endpoints) (`/db` / `/native-db` / `/api/db`). Same measurement conditions (`CONN=50` / `DURATION=30s` / oha), same machine, each app started one at a time. All 22 configurations were validated before and after measurement to have a 100% success rate and responses matching the expected value (the deterministic output of `runWorkload()`). Because SQLite is queried three times and aggregated on the application side, each request takes about 37–47 ms. The standalone servers (Elysia / Hono / Express on Node and Bun, plus NestJS on Express / Fastify) were all re-measured together in a single run.
 
 | Configuration | Requests/sec | Avg ms | p50 ms | p99 ms |
 | --- | --- | --- | --- | --- |
-| Hono standalone DB (Bun) | **1,490** | 33.6 | 33.2 | 45.4 |
-| Elysia standalone DB (Bun) | 1,482 | 33.7 | 33.4 | 44.1 |
-| Express standalone DB (Bun) | 1,415 | 35.3 | 34.8 | 44.6 |
+| Elysia standalone DB (Bun) | **1,342** | 37.3 | 36.8 | 62.0 |
 | Nuxt native DB | 1,338 | 37.4 | 39.1 | 60.4 |
-| Elysia standalone DB (Node) | 1,336 | 37.4 | 36.4 | 72.8 |
-| Hono standalone DB (Node) | 1,335 | 37.5 | 36.5 | 73.0 |
-| Express standalone DB (Node) | 1,319 | 37.9 | 36.9 | 73.9 |
+| Hono standalone DB (Bun) | 1,329 | 37.6 | 37.0 | 71.0 |
 | Nuxt + Elysia DB | 1,305 | 38.3 | 37.5 | 74.9 |
+| Express standalone DB (Bun) | 1,304 | 38.4 | 37.1 | 74.5 |
+| NestJS standalone Fastify DB (Node) | 1,280 | 39.1 | 38.2 | 76.4 |
 | SvelteKit native DB | 1,276 | 39.2 | 37.4 | 74.9 |
+| Elysia standalone DB (Node) | 1,275 | 39.2 | 38.2 | 76.6 |
 | SvelteKit + Elysia DB | 1,261 | 39.7 | 37.5 | 75.3 |
+| Express standalone DB (Node) | 1,252 | 40.0 | 39.0 | 78.0 |
 | TanStack Start native DB | 1,250 | 40.0 | 38.4 | 76.5 |
+| Hono standalone DB (Node) | 1,248 | 40.1 | 39.0 | 78.0 |
 | TanStack Start + Elysia DB | 1,227 | 40.8 | 39.0 | 77.2 |
+| NestJS standalone Express DB (Node) | 1,223 | 40.9 | 39.1 | 78.8 |
 | SolidStart + Elysia DB | 1,195 | 41.9 | 40.0 | 80.6 |
 | SolidStart native DB | 1,179 | 42.4 | 40.0 | 79.9 |
 | Astro + Elysia DB | 1,172 | 42.7 | 43.9 | 67.8 |
@@ -326,30 +332,30 @@ Measurement results for the [complex workload (DB aggregation) endpoints](#compl
 
 | Configuration | Node RPS | Bun RPS | Bun multiplier |
 | --- | --- | --- | --- |
-| Elysia standalone DB | 1,336 | 1,482 | **×1.11** |
-| Hono standalone DB | 1,335 | 1,490 | **×1.12** |
-| Express standalone DB | 1,319 | 1,415 | **×1.07** |
+| Elysia standalone DB | 1,275 | 1,342 | **×1.05** |
+| Hono standalone DB | 1,248 | 1,329 | **×1.06** |
+| Express standalone DB | 1,252 | 1,304 | **×1.04** |
 
-→ The Bun multipliers on the simple endpoints (Elysia ×1.59 / Hono ×1.45 / Express ×1.26) shrink to **around ×1.1** for DB aggregation. Since most of the latency is taken by SQLite access and application-side aggregation (CPU-bound), the speed of the runtime's HTTP layer matters less.
+→ The Bun multipliers on the simple endpoints (Elysia ×1.60 / Hono ×1.45 / Express ×1.33) shrink to **around ×1.05** for DB aggregation. Since most of the latency is taken by SQLite access and application-side aggregation (CPU-bound), the speed of the runtime's HTTP layer matters less.
 
 #### Throughput (complex workload, Requests/sec, higher is better)
 
 ```mermaid
 xychart-beta
     title "DB workload Requests/sec (higher is better)"
-    x-axis ["Hono(Bun)", "Elysia(Bun)", "Express(Bun)", "Nuxt-nat", "Elysia(Node)", "Hono(Node)", "Express(Node)", "Svelte+E", "TanStack+E", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
+    x-axis ["Elysia(Bun)", "Nuxt-nat", "Hono(Bun)", "Express(Bun)", "NestJS-Fas", "Elysia(Node)", "Svelte+E", "Express(Node)", "Hono(Node)", "TanStack+E", "NestJS-Exp", "Solid+E", "Astro+E", "Adonis+E", "Next+E"]
     y-axis "Requests/sec" 0 --> 1600
-    bar [1490, 1482, 1415, 1338, 1336, 1335, 1319, 1261, 1227, 1195, 1172, 1133, 1056]
+    bar [1342, 1338, 1329, 1304, 1280, 1275, 1261, 1252, 1248, 1227, 1223, 1195, 1172, 1133, 1056]
 ```
 
 ### Discussion (complex workload)
 
-- **When DB processing dominates, framework differences nearly vanish**: On the simple endpoints, fastest-to-slowest spanned about **12x** (79,590 → 6,324 RPS), but on the complex endpoints it compresses to about **1.4x** (1,490 → 1,056 RPS). The ~33–47 ms SQLite aggregation takes up most of the latency, burying the differences in the routing/serialization layer. For real-API-like loads where DB access is the main act, "how to make the DB and application-side logic fast" dominates over "which framework".
-- **Bun's advantage shrinks too**: The standalone servers' Bun multiplier drops from the simple endpoints' ×1.59 (Elysia) to **×1.11** (Hono ×1.45→×1.12, Express ×1.26→×1.07). For CPU-bound DB processing, a faster runtime has little headroom to exploit.
+- **When DB processing dominates, framework differences nearly vanish**: On the simple endpoints, fastest-to-slowest spanned about **13x** (77,556 → 6,111 RPS), but on the complex endpoints it compresses to about **1.3x** (1,342 → 1,056 RPS). The ~37–47 ms SQLite aggregation takes up most of the latency, burying the differences in the routing/serialization layer. For real-API-like loads where DB access is the main act, "how to make the DB and application-side logic fast" dominates over "which framework".
+- **Bun's advantage shrinks too**: The standalone servers' Bun multiplier drops from the simple endpoints' ×1.60 (Elysia) to **×1.05** (Hono ×1.45→×1.06, Express ×1.33→×1.04). For CPU-bound DB processing, a faster runtime has little headroom to exploit.
 - **Elysia integration overhead disappears too**: Nuxt's prominent -39% on the simple endpoints shrinks to **-2.5%** (1,338→1,305) on the DB version. The other frameworks' native and +Elysia stay within ±3% (within measurement noise), and for Astro / SolidStart / AdonisJS there are even spots where +Elysia is faster within the margin of error. The cost of mounting Elysia becomes relatively negligible as the actual per-request work gets heavier.
-- **The ordering within standalone servers holds**: Even so, the Bun group (Hono/Elysia/Express) occupies the top spots by a slim margin, and on Bun they beat the Node group even with DB included. Within Node, Elysia ≈ Hono ≈ Express (~1% gap, within variance) are essentially level.
+- **The ordering within standalone servers holds, and NestJS is level too**: Even so, the Bun group (Elysia/Hono/Express) occupies the top spots by a slim margin, and on Bun they beat the Node group even with DB included. Within Node, Elysia ≈ Express ≈ Hono ≈ NestJS (~2% gap, within variance) are essentially level, with NestJS Fastify (1,280) just above and the Express adapter (1,223) just below — adapter and framework differences are buried once DB aggregation dominates.
 
-> Note: the table above is from a different measurement run (same environment) than the simple endpoints. The simple endpoints in the same run (Elysia(Node) 50,836 / Elysia(Bun) 79,590, etc.) agree with the table above (49,225 / 78,496) within ±a few %, so the environment is stable. The lower `p99` for the Bun group than the Node group (~44 ms vs ~73 ms) is due to oha's cutoff behavior at the deadline and differences in the tail distribution; read it as a relative comparison.
+> Note: the standalone servers (Elysia / Hono / Express / NestJS) share the same run for both the simple and complex endpoints, so they are **directly comparable to each other**. The full-stack rows carry over values from earlier runs (same environment), so comparisons against the standalone group include time-of-day drift (±a few %). The lower `p99` for the Bun group than the Node group (62–71 ms vs 76–78 ms) is due to oha's cutoff behavior at the deadline and differences in the tail distribution; read it as a relative comparison.
 
 ## Caveats
 
