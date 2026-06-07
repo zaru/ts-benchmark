@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "NODE_ENV=production node build/bin/server.js",
+    "start:lean": "NODE_ENV=production ADONIS_BENCH_LEAN=1 PORT=3015 node build/bin/server.js",
     "build": "node ace build && cp -f .env build/.env",
     "dev": "node ace serve --hmr",
     "test": "node ace test",

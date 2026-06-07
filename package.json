@@ -32,6 +32,7 @@
     "dev:astro": "pnpm --filter astro-elysia dev",
     "build:adonis": "pnpm --filter adonis-standalone build",
     "start:adonis": "pnpm --filter adonis-standalone start",
+    "start:adonis:lean": "pnpm --filter adonis-standalone start:lean",
     "dev:adonis": "pnpm --filter adonis-standalone dev",
     "build:solid": "pnpm --filter solidstart-elysia build",
     "start:solid": "pnpm --filter solidstart-elysia start",

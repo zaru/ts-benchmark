@@ -13,26 +13,24 @@ import { controllers } from '#generated/controllers'
 import { payload } from '@elysia-bench/payload'
 import { runWorkload } from '@elysia-bench/workload'
 
-router.get('/', () => {
-  return { hello: 'world' }
-})
-
 /*
 |--------------------------------------------------------------------------
 | ベンチマーク用ルート
 |--------------------------------------------------------------------------
 |
-| 素のネイティブ実装（/native）を公開する。
+| AdonisJS は単体サーバ（Elysia 連携なし）として計測する。他の単体サーバ
+| （Elysia / Hono / Express / NestJS）と揃え、単純エンドポイントを GET /、
+| 複雑ワークロードを GET /db で公開する。
+|
+| ミドルウェアスタックの厚みは [`start/kernel.ts`](start/kernel.ts) で full / lean を
+| 切り替える（ADONIS_BENCH_LEAN=1 で lean）。ルート定義はモードに依らず共通。
 */
 
-// 素のネイティブ実装
-router.get('/native', ({ response }) => response.json(payload))
+// 単純エンドポイント（静的 JSON）
+router.get('/', ({ response }) => response.json(payload))
 
-/*
-| 複雑ワークロード版（SQLite を複数回クエリしてアプリ側で集計する）。
-|   GET /native-db … 素のネイティブ実装
-*/
-router.get('/native-db', async ({ response }) => response.json(await runWorkload()))
+// 複雑ワークロード（SQLite を複数回クエリしてアプリ側で集計する）
+router.get('/db', async ({ response }) => response.json(await runWorkload()))
 
 router
   .group(() => {
