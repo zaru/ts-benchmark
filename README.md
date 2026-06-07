@@ -209,6 +209,7 @@ DURATION=60s CONN=100 pnpm bench
 | Hono 単体 (Node) | 46,439 | 1.08 | 1.02 | 2.11 |
 | Express 単体 (Bun) | 44,240 | 1.13 | 1.05 | 2.22 |
 | NestJS 単体 Fastify (Node) | 39,717 | 1.26 | 1.21 | 2.46 |
+| AdonisJS 単体 (lean) | 39,205 | 1.27 | 1.22 | 2.53 |
 | Nuxt native | 37,223 | 1.34 | 1.24 | 2.61 |
 | Express 単体 (Node) | 35,148 | 1.42 | 1.36 | 2.82 |
 | NestJS 単体 Express (Node) | 31,724 | 1.57 | 1.53 | 3.13 |
@@ -219,6 +220,7 @@ DURATION=60s CONN=100 pnpm bench
 | Nuxt + Elysia | 22,672 | 2.20 | 2.17 | 4.34 |
 | SolidStart native | 18,321 | 2.73 | 2.57 | 5.11 |
 | SolidStart + Elysia | 18,219 | 2.74 | 2.58 | 5.13 |
+| AdonisJS 単体 (full) | 11,575 | 4.32 | 4.31 | 8.58 |
 | Astro native | 11,417 | 4.38 | 4.14 | 8.80 |
 | Astro + Elysia | 10,885 | 4.59 | 4.34 | 9.17 |
 | Next.js native | 6,578 | 7.60 | 7.16 | 15.18 |
@@ -268,7 +270,7 @@ DURATION=60s CONN=100 pnpm bench
 
 #### AdonisJS（単体・lean / full）
 
-AdonisJS は単体サーバ（Elysia 連携なし）として計測し、api スターターキット既定のミドルウェアを通す **full**（port 3005）と、それを外して他の単体サーバと同条件に揃えた **lean**（port 3015）の 2 モードを比較する（[`start/kernel.ts`](apps/adonis-standalone/start/kernel.ts) を `ADONIS_BENCH_LEAN` で切替）。両モードとも上記と同一ランで連続計測した値:
+AdonisJS は単体サーバ（Elysia 連携なし）として計測し、api スターターキット既定のミドルウェアを通す **full**（port 3005）と、それを外して他の単体サーバと同条件に揃えた **lean**（port 3015）の 2 モードを用意している（[`start/kernel.ts`](apps/adonis-standalone/start/kernel.ts) を `ADONIS_BENCH_LEAN` で切替）。両モードとも上の全体表に含めているが、ここではミドルウェアの厚みによる差を p90 と lean/full 比つきで並べる:
 
 | モード | Requests/sec | 平均 ms | p50 ms | p90 ms | p99 ms | lean/full |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -311,7 +313,7 @@ xychart-beta
 
 - **Elysia 連携のオーバーヘッドは連携方式次第（今回の主目的）**: 受け取った Web `Request` をそのまま `elysia.handle()` に委譲できる **TanStack / SolidStart / SvelteKit（±1〜2%、誤差）** はほぼ無視できる。`Request`/`Response` 変換を挟む **Astro（-5%）/ Next.js（-11%）** はやや大きい。**Nuxt（-39%）** は native が Nitro のオブジェクト返却最速経路のため相対差が際立つ（Elysia 自体ではなく橋渡し経路のコスト）。総じて「Elysia を使うかどうか」より「どのフレームワークに載せるか」がスループットを支配する。
 - **単体サーバ比較（Elysia なし）**: 素の HTTP サーバとしては Node・Bun いずれでも **Elysia ≥ Hono > Express** の序列。Node では **Elysia(48,817) ≈ Hono(46,439) > Express(35,148)** で Elysia と Hono はほぼ互角（差 ~5%、ばらつき範囲）、Elysia は Bun 専用ではなく `@elysiajs/node` でも Hono と肩を並べる。Bun では **Elysia(83,625) > Hono(71,707) > Express(44,240)** となり、Elysia が Hono を約 14% 引き離す。Express(5) は Node で約 0.72 倍、Bun で約 0.53 倍。**NestJS**（Node のみ）は Fastify アダプタ(39,717)が素の Express(35,148)を上回り Elysia 比 0.81、Express アダプタ(31,724)は素の Express とほぼ同等（Elysia 比 0.65）で、NestJS フレームワーク層のオーバーヘッドは小さくアダプタの素性が支配的。
-- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準に native のスループットを見ると、Nuxt ≒ 0.76 倍、SvelteKit ≒ 0.51 倍、TanStack ≒ 0.47 倍、SolidStart ≒ 0.38 倍、Astro ≒ 0.23 倍、Next.js ≒ 0.13 倍。**Nuxt（Nitro）の native が突出して速く**（オブジェクトをそのまま返す最速経路）、次いで SvelteKit ≒ TanStack、SolidStart が中位、Astro、最後に Next.js の Route Handler 層が最も重い。AdonisJS は単体サーバとして別枠で計測しており、既定ミドルウェアの有無で大きく変わる（[AdonisJS（単体・lean / full）](#adonisjs単体lean--full)を参照）。
+- **フレームワーク経由のコスト（同一 Node ランタイム比）**: Elysia 単体(Node) を基準に native のスループットを見ると、Nuxt ≒ 0.76 倍、SvelteKit ≒ 0.51 倍、TanStack ≒ 0.47 倍、SolidStart ≒ 0.38 倍、Astro ≒ 0.23 倍、Next.js ≒ 0.13 倍。**Nuxt（Nitro）の native が突出して速く**（オブジェクトをそのまま返す最速経路）、次いで SvelteKit ≒ TanStack、SolidStart が中位、Astro、最後に Next.js の Route Handler 層が最も重い。AdonisJS は単体サーバとして全体表に含めており、既定ミドルウェアの有無（lean / full）で大きく変わる（[AdonisJS（単体・lean / full）](#adonisjs単体lean--full)を参照）。
 - **ランタイム差（Node → Bun）**: Bun に替えるとスループットは伸びるが伸び幅はフレームワーク次第で、**Elysia ×1.71 > Hono ×1.54 > Express ×1.26**。Bun ネイティブを前提に設計された Elysia が最も恩恵を受け、Elysia 本来の推奨環境である Bun が全構成で最速。Hono も Bun で大きく伸び（71,707 RPS）、Node の Elysia すら上回って総合 2 位につける。
 - **総合**: 最速の Elysia 単体(Bun) を 100% とすると、Hono(Bun) ≒ 86%、Elysia(Node) ≒ 58%、Hono(Node) ≒ 56%、Express(Bun) ≒ 53%、NestJS(Fastify) ≒ 47%、Express(Node) ≒ 42%、NestJS(Express) ≒ 38%、（+Elysia 連携で）SvelteKit ≒ 29%、TanStack ≒ 28%、Nuxt ≒ 27%、SolidStart ≒ 22%、Astro ≒ 13%、Next.js ≒ 7%。フルスタック連携しつつ API 性能も重視するなら **SvelteKit / TanStack Start / Nuxt** が有利（Nuxt は native を直接使えばさらに速い）。純粋な API スループットが最優先なら Elysia（できれば Bun）を独立プロセスで立てる構成が最良で、Bun が使えるなら Hono も僅差で続く。
 
