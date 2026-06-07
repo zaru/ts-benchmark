@@ -7,6 +7,7 @@ import { runWorkload } from "@elysia-bench/workload"
 //   GET /   … 単純な静的 JSON（従来）
 //   GET /db … SQLite を複数回クエリしてアプリ側で集計する複雑ワークロード
 export const app = express()
+app.set('etag', false)
 app.get("/", (_req, res) => {
   res.json(payload)
 })
