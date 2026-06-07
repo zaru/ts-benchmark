@@ -204,32 +204,32 @@ Measurement environment: macOS (Darwin 25.5.0, Apple Silicon) / Node 26.3.0 / Bu
 
 All benchmark targets are consolidated into one table. The **simple (static JSON)** endpoints (`GET /` · `/native` · `/api`) and **complex (DB aggregation)** endpoints (`GET /db` · `/native-db` · `/api/db`) sit side by side, sorted by simple Requests/sec descending.
 
-| Configuration | Simple RPS | Simple p50 ms | Simple p99 ms | DB RPS | DB p50 ms | DB p99 ms |
-| --- | --- | --- | --- | --- | --- | --- |
-| Elysia standalone (Bun) | **83,625** | 0.55 | 1.22 | 1,357 | 36.47 | 64.54 |
-| Hono standalone (Bun) | 71,707 | 0.65 | 1.41 | 1,396 | 35.42 | 60.69 |
-| Elysia standalone (Node) | 48,817 | 0.98 | 2.02 | 1,275 | 38.36 | 76.74 |
-| Hono standalone (Node) | 46,439 | 1.02 | 2.11 | 1,274 | 38.40 | 76.78 |
-| Express standalone (Bun) | 44,240 | 1.05 | 2.22 | 1,376 | 35.86 | 49.95 |
-| NestJS standalone Fastify (Node) | 39,717 | 1.21 | 2.46 | 1,214 | 39.31 | 78.29 |
-| AdonisJS standalone (lean) | 39,205 | 1.22 | 2.53 | 1,137 | — | — |
-| Nuxt native | 37,223 | 1.24 | 2.61 | 1,335 | 42.92 | 59.90 |
-| Express standalone (Node) | 35,148 | 1.36 | 2.82 | 1,256 | 38.93 | 77.82 |
-| NestJS standalone Express (Node) | 31,724 | 1.53 | 3.13 | 1,230 | 39.70 | 79.50 |
-| SvelteKit native | 24,772 | 1.80 | 4.58 | 1,266 | 37.68 | 75.61 |
-| SvelteKit + Elysia | 24,529 | 1.81 | 4.67 | 1,278 | 37.26 | 74.74 |
-| TanStack Start + Elysia | 23,282 | 2.03 | 4.25 | 1,202 | 40.10 | 79.90 |
-| TanStack Start native | 22,818 | 2.10 | 4.32 | 1,198 | 40.20 | 80.00 |
-| Nuxt + Elysia | 22,672 | 2.17 | 4.34 | 1,300 | 37.60 | 75.09 |
-| SolidStart native | 18,321 | 2.57 | 5.11 | 1,220 | 39.33 | 78.28 |
-| SolidStart + Elysia | 18,219 | 2.58 | 5.13 | 1,222 | 39.30 | 78.30 |
-| AdonisJS standalone (full) | 11,575 | 4.31 | 8.58 | 1,048 | — | — |
-| Astro native | 11,417 | 4.14 | 8.80 | 1,088 | 46.43 | 78.99 |
-| Astro + Elysia | 10,885 | 4.34 | 9.17 | 1,090 | 45.42 | 93.33 |
-| Next.js native | 6,578 | 7.16 | 15.18 | 1,041 | 46.60 | 93.30 |
-| Next.js + Elysia | 5,830 | 8.17 | 17.19 | 995 | 48.60 | 96.60 |
+| Configuration | Simple RPS | DB RPS |
+| --- | --- | --- |
+| Elysia standalone (Bun) | **83,625** | 1,357 |
+| Hono standalone (Bun) | 71,707 | 1,396 |
+| Elysia standalone (Node) | 48,817 | 1,275 |
+| Hono standalone (Node) | 46,439 | 1,274 |
+| Express standalone (Bun) | 44,240 | 1,376 |
+| NestJS standalone Fastify (Node) | 39,717 | 1,214 |
+| AdonisJS standalone (lean) | 39,205 | 1,137 |
+| Nuxt native | 37,223 | 1,335 |
+| Express standalone (Node) | 35,148 | 1,256 |
+| NestJS standalone Express (Node) | 31,724 | 1,230 |
+| SvelteKit native | 24,772 | 1,266 |
+| SvelteKit + Elysia | 24,529 | 1,278 |
+| TanStack Start + Elysia | 23,282 | 1,202 |
+| TanStack Start native | 22,818 | 1,198 |
+| Nuxt + Elysia | 22,672 | 1,300 |
+| SolidStart native | 18,321 | 1,220 |
+| SolidStart + Elysia | 18,219 | 1,222 |
+| AdonisJS standalone (full) | 11,575 | 1,048 |
+| Astro native | 11,417 | 1,088 |
+| Astro + Elysia | 10,885 | 1,090 |
+| Next.js native | 6,578 | 1,041 |
+| Next.js + Elysia | 5,830 | 995 |
 
-All success rates were 100% (every response was 200, with a body matching the shared payload). Simple endpoints take ~0.5–8.6ms; DB aggregation queries SQLite 3 times and aggregates app-side, taking ~36–50ms/request. AdonisJS DB was measured for throughput only (lean 1,137 / full 1,048 RPS).
+All success rates were 100% (every response was 200, with a body matching the shared payload). Latency is ~0.5–8.6ms for simple endpoints; DB aggregation queries SQLite 3 times and aggregates app-side, taking ~36–50ms/request.
 
 Representative chart — simple-endpoint Requests/sec (full-stack shown as +Elysia, AdonisJS as lean / full):
 
